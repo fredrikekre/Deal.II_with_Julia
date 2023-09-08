@@ -1,0 +1,10 @@
+build/*
+*.vtu
+.cache/
+compile_commands.json
+*.log
+CMakeCache.txt
+Makefile
+CMakeFiles/*
+cmake_install.cmake
+hyperelasticity
