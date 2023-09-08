@@ -1,2 +1,4 @@
 build/*
 *.vtu
+.cache/
+compile_commands.json

@@ -1,12 +1,6 @@
-//
-// Created by kristoffer on 2015-11-30.
-//
+#ifndef HYPERELASTICITY_H
+#define HYPERELASTICITY_H
 
-#ifndef GRAD_GRAD_H_H
-#define GRAD_GRAD_H_H
-
-/* #include "./Parameters.h" */
-/* #include "./LinearElastic.h" */
 #include "Time.h"
 
 /* #include <deal.II/base/parameter_handler.h> */
@@ -101,4 +95,4 @@ private:
 };
 } // namespace CrystalPlastSim
 
-#endif // GRAD_GRAD_H_H
+#endif // HYPERELASTICITY_H
