@@ -18,7 +18,7 @@
 #include <vector>
 #include <deal.II/base/quadrature_lib.h>
 
-namespace CrystalPlastNS {
+namespace HyperelasticityNS {
 
 
 struct NeoHooke {
@@ -28,14 +28,14 @@ struct NeoHooke {
 
 struct QuadraturePointData;
 
-template <int dim> class CrystalPlastSim {
+template <int dim> class HyperelasticitySim {
 public:
   /* using FuncType = void(*)(double*, double*, std::array<double, dim*dim>, std::array<double, dim>*, std::array<double, dim*dim>*, int, double, NeoHooke); */
   /* using FuncType = void(*)(double*, double*, double*, std::array<double, dim*dim>, std::array<double, dim>*, std::array<double, dim*dim>*, int, double, NeoHooke); */
   using FuncType = void(*)(double*, double*, QuadraturePointData*, std::array<double, dim*dim>, std::array<double, dim>*, std::array<double, dim*dim>*, int, double, NeoHooke);
 
-  explicit CrystalPlastSim();
-  virtual ~CrystalPlastSim();
+  explicit HyperelasticitySim();
+  virtual ~HyperelasticitySim();
   void run();
 
 private:
@@ -69,7 +69,6 @@ private:
   static void print_conv_header();
   void print_conv_footer();
   void setup_quadrature_point_data();
-  // void adaptively_refine_grid();
 
   void assemble_system(const dealii::Vector<double> &solution_delta);
   FuncType compute_jl;
@@ -92,8 +91,8 @@ private:
   Time time;
   Errors error_residual, error_residual_0, error_residual_norm, error_update,
       error_update_0, error_update_norm;
-  /* LinearElastic::LinearElastic<dim> material_lin; */
 };
-} // namespace CrystalPlastSim
+
+} // namespace HyperelasticityNS
 
 #endif // HYPERELASTICITY_H

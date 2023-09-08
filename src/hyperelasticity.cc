@@ -44,7 +44,7 @@
 #include <fstream>
 #include <vector>
 
-namespace CrystalPlastNS {
+namespace HyperelasticityNS {
 
 
 struct QuadraturePointData {
@@ -120,11 +120,11 @@ void BoundaryValues<dim>::vector_value_list(
 
 /*
  *******************
- * Crystal Plast
+ * hyperelasticity
  *******************
  */
 template <int dim>
-CrystalPlastSim<dim>::CrystalPlastSim()
+HyperelasticitySim<dim>::HyperelasticitySim()
     :
       degree(1),
       fe(FE_Q<dim>(1), dim),
@@ -144,11 +144,11 @@ CrystalPlastSim<dim>::CrystalPlastSim()
         );
       }
 
-template <int dim> CrystalPlastSim<dim>::~CrystalPlastSim() {
+template <int dim> HyperelasticitySim<dim>::~HyperelasticitySim() {
   dof_handler.clear();
 }
 
-template <int dim> void CrystalPlastSim<dim>::run() {
+template <int dim> void HyperelasticitySim<dim>::run() {
   {
     TimerOutput::Scope timer_section(timer, "Making grid");
     make_grid();
@@ -173,7 +173,7 @@ template <int dim> void CrystalPlastSim<dim>::run() {
 }
 
 
-template <int dim> void CrystalPlastSim<dim>::make_grid() {
+template <int dim> void HyperelasticitySim<dim>::make_grid() {
   deallog << "Creating mesh" << std::endl << std::flush;
 
   GridGenerator::hyper_cube(triangulation, 0.0, 1.0);
@@ -188,7 +188,7 @@ template <int dim> void CrystalPlastSim<dim>::make_grid() {
 * Creates the sparsity pattern,
 * Computes dirichlet contrains
 */
-template <int dim> void CrystalPlastSim<dim>::system_setup() {
+template <int dim> void HyperelasticitySim<dim>::system_setup() {
 
   setup_quadrature_point_data();
   dof_handler.distribute_dofs(fe);
@@ -217,7 +217,7 @@ template <int dim> void CrystalPlastSim<dim>::system_setup() {
 }
 
 template <int dim>
-void CrystalPlastSim<dim>::output_results() {
+void HyperelasticitySim<dim>::output_results() {
   static int n_output = 0;
   DataOut<dim> data_out;
   std::vector<std::string> solution_names(dim, "displacements");
@@ -252,7 +252,7 @@ void CrystalPlastSim<dim>::output_results() {
 }
 
 template <int dim>
-void CrystalPlastSim<dim>::get_error_residual() {
+void HyperelasticitySim<dim>::get_error_residual() {
   Vector<double> error_res(dof_handler.n_dofs());
   for (unsigned int i = 0; i < dof_handler.n_dofs(); ++i)
     if (!dirichlet_constraints.is_constrained(i))
@@ -262,7 +262,7 @@ void CrystalPlastSim<dim>::get_error_residual() {
 }
 
 template <int dim>
-void CrystalPlastSim<dim>::get_error_update(
+void HyperelasticitySim<dim>::get_error_update(
     const Vector<double> &newton_update) {
   Vector<double> error_ud(dof_handler.n_dofs());
   for (unsigned int i = 0; i < dof_handler.n_dofs(); ++i)
@@ -274,7 +274,7 @@ void CrystalPlastSim<dim>::get_error_update(
 }
 
 template <int dim>
-Vector<double> CrystalPlastSim<dim>::get_total_solution(
+Vector<double> HyperelasticitySim<dim>::get_total_solution(
     const Vector<double> &solution_delta) const {
   Vector<double> solution_total(solution_n);
   solution_total += solution_delta;
@@ -288,7 +288,7 @@ Vector<double> CrystalPlastSim<dim>::get_total_solution(
 */
 
 template <int dim>
-void CrystalPlastSim<dim>::solve_nonlinear_timestep(
+void HyperelasticitySim<dim>::solve_nonlinear_timestep(
     Vector<double> &solution_delta) {
   std::cout << std::endl
             << "Timestep " << time.get_timestep() << " @ " << time.current()
@@ -356,7 +356,7 @@ void CrystalPlastSim<dim>::solve_nonlinear_timestep(
 
 template <int dim>
 std::pair<unsigned int, double>
-CrystalPlastSim<dim>::solve_linear_system(
+HyperelasticitySim<dim>::solve_linear_system(
     Vector<double> &newton_update) {
   timer.enter_subsection("Solving linear system");
   std::cout << " SLV " << std::flush;
@@ -373,7 +373,7 @@ CrystalPlastSim<dim>::solve_linear_system(
 }
 
 template <int dim>
-void CrystalPlastSim<dim>::print_conv_header() {
+void HyperelasticitySim<dim>::print_conv_header() {
   static const unsigned int l_width = 100;
   for (unsigned int i = 0; i < l_width; ++i)
     std::cout << "_";
@@ -388,7 +388,7 @@ void CrystalPlastSim<dim>::print_conv_header() {
 }
 
 template <int dim>
-void CrystalPlastSim<dim>::print_conv_footer() {
+void HyperelasticitySim<dim>::print_conv_footer() {
   static const unsigned int l_width = 155;
   for (unsigned int i = 0; i < l_width; ++i)
     std::cout << "_";
@@ -404,7 +404,7 @@ void CrystalPlastSim<dim>::print_conv_footer() {
 
 
 template <int dim>
-void CrystalPlastSim<dim>::assemble_system(
+void HyperelasticitySim<dim>::assemble_system(
     const Vector<double> &solution_delta) {
   timer.enter_subsection("Assembling");
   std::cout << " ASM " << std::flush;
@@ -500,7 +500,7 @@ void CrystalPlastSim<dim>::assemble_system(
 }
 
 template <int dim>
-void CrystalPlastSim<dim>::make_dirichlet_constraints() {
+void HyperelasticitySim<dim>::make_dirichlet_constraints() {
   std::cout << " CST " << std::endl << std::flush;
   dirichlet_constraints.clear();
   DoFTools::make_hanging_node_constraints(dof_handler, dirichlet_constraints);
@@ -511,7 +511,7 @@ void CrystalPlastSim<dim>::make_dirichlet_constraints() {
 }
 
 template <int dim>
-void CrystalPlastSim<dim>::setup_quadrature_point_data() {
+void HyperelasticitySim<dim>::setup_quadrature_point_data() {
   deallog << "Setting up quadrature point history" << std::endl << std::flush;
   triangulation.clear_user_data();
   {
@@ -551,7 +551,7 @@ jl_value_t *checked_eval_string(const char* code)
 
 int main() {
   using dealii::deallog;
-  using CrystalPlastNS::CrystalPlastSim;
+  using HyperelasticityNS::hyperelasticitySim;
 
   try {
     deallog.depth_console(0);
@@ -565,7 +565,7 @@ int main() {
     auto str = std::string("include(\"") + std::string(JULIA_SOURCE_FILE) + std::string("\")");
     checked_eval_string(str.c_str());
 
-    CrystalPlastSim<3> cp;
+    HyperelasticitySim<3> cp;
     cp.run();
   } catch (std::exception &exc) {
     std::cerr << std::endl
