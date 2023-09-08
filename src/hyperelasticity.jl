@@ -7,6 +7,7 @@ end
 
 struct QuadraturePointData
     mise::Float64
+    JxW::Float64
 end
 
 function Ψ(C, mp::NeoHooke)
@@ -31,16 +32,16 @@ function constitutive_driver(F, mp::NeoHooke)
 end;
 
 
-function do_assemble!(ge::Ptr{Float64}, ke::Ptr{Float64}, mise_ptr::Ptr, ∇u::Tensor{2, dim}, δuis::Ptr, ∇δuis::Ptr, ndofs, dΩ, mp::NeoHooke) where {dim}
+function do_assemble!(ge::Ptr{Float64}, ke::Ptr{Float64}, data_ptr::Ptr, ∇u::Tensor{2, dim}, δuis::Ptr, ∇δuis::Ptr, ndofs, dΩ, mp::NeoHooke) where {dim}
     ge    = unsafe_wrap(Array, ge, ndofs)
     ke    = unsafe_wrap(Array, ke, (ndofs, ndofs))
     δuis  = unsafe_wrap(Array, δuis, ndofs)
     ∇δuis = unsafe_wrap(Array, ∇δuis, ndofs)
 
-    do_assemble!(ge, ke, mise_ptr, ∇u, δuis, ∇δuis, ndofs, dΩ, mp)
+    do_assemble!(ge, ke, data_ptr, ∇u, δuis, ∇δuis, ndofs, dΩ, mp)
 end
 
-function do_assemble!(ge::Vector{Float64}, ke::Matrix{Float64}, mise_ptr::Ptr{Float64}, ∇u::Tensor{2, dim}, δuis::Vector{<:Vec}, ∇δuis::Vector{<:Tensor{2}}, ndofs, dΩ::Float64, mp::NeoHooke) where {dim}
+function do_assemble!(ge::Vector{Float64}, ke::Matrix{Float64}, data_ptr::Ptr{QuadraturePointData}, ∇u::Tensor{2, dim}, δuis::Vector{<:Vec}, ∇δuis::Vector{<:Tensor{2}}, ndofs, dΩ::Float64, mp::NeoHooke) where {dim}
     # Compute deformation gradient F and right Cauchy-Green tensor C
     F = one(∇u) + ∇u
     C = tdot(F) # F' ⋅ F
@@ -69,7 +70,7 @@ function do_assemble!(ge::Vector{Float64}, ke::Matrix{Float64}, mise_ptr::Ptr{Fl
     # Store the Cauchy stress
     σ = P ⋅ F' / det(F)
     vM = sqrt(3/2 * dev(σ) ⊡ dev(σ))
-    unsafe_store!(mise_ptr, vM)
+    unsafe_store!(data_ptr, QuadraturePointData(vM, dΩ))
     # println("Stress norm in julia: ", vM)
 
     return

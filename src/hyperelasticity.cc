@@ -49,6 +49,7 @@ namespace CrystalPlastNS {
 
 struct QuadraturePointData {
   double mise;
+  double JxW;
 };
 
 using namespace dealii;
@@ -137,7 +138,8 @@ CrystalPlastSim<dim>::CrystalPlastSim()
           compute_jl = reinterpret_cast<FuncType>(
             jl_unbox_voidpointer(
                 /* jl_eval_string("@cfunction(do_assemble!, Cvoid, (Ptr{Float64}, Ptr{Float64}, Tensor{2,3,Float64,9}, Ptr{Vec{3, Float64}}, Ptr{Tensor{2,3,Float64,9}}, Cint, Float64, NeoHooke))") */
-                jl_eval_string("@cfunction(do_assemble!, Cvoid, (Ptr{Float64}, Ptr{Float64}, Ptr{Float64}, Tensor{2,3,Float64,9}, Ptr{Vec{3, Float64}}, Ptr{Tensor{2,3,Float64,9}}, Cint, Float64, NeoHooke))")
+                /* jl_eval_string("@cfunction(do_assemble!, Cvoid, (Ptr{Float64}, Ptr{Float64}, Ptr{Float64}, Tensor{2,3,Float64,9}, Ptr{Vec{3, Float64}}, Ptr{Tensor{2,3,Float64,9}}, Cint, Float64, NeoHooke))") */
+                jl_eval_string("@cfunction(do_assemble!, Cvoid, (Ptr{Float64}, Ptr{Float64}, Ptr{QuadraturePointData}, Tensor{2,3,Float64,9}, Ptr{Vec{3, Float64}}, Ptr{Tensor{2,3,Float64,9}}, Cint, Float64, NeoHooke))")
             )
         );
       }
@@ -226,23 +228,23 @@ void CrystalPlastSim<dim>::output_results() {
   data_out.add_data_vector(solution_n, solution_names,
                            DataOut<dim>::type_dof_data,
                            data_component_interpretation);
-  Vector<double> vonMise_stresses(triangulation.n_active_cells());
+  Vector<double> stress_out(triangulation.n_active_cells());
 
   unsigned int index = 0;
   for (const auto &cell : triangulation.active_cell_iterators()) {
-    double norm_stress = 0.0;
-
+    double weighted_stress = 0.0;
+    double volume = 0.0;
     for (unsigned int q = 0; q < n_q_points; ++q) {
-      auto vonMise =
-          reinterpret_cast<QuadraturePointData *>(cell->user_pointer())[q].mise;
-      norm_stress += vonMise;
+      auto data = reinterpret_cast<QuadraturePointData *>(cell->user_pointer())[q];
+      weighted_stress += data.mise * data.JxW;
+      volume += data.JxW;
     }
-    vonMise_stresses[index] = norm_stress / n_q_points;
+    stress_out[index] = weighted_stress / volume;
     index++;
   }
 
   Assert(index == triangulation.n_active_cells(), ExcInternalError());
-  data_out.add_data_vector(vonMise_stresses, "vonmises");
+  data_out.add_data_vector(stress_out, "vonmises");
   data_out.build_patches();
   std::ofstream out("solution" + std::to_string(n_output) + ".vtu");
   n_output++;
@@ -465,10 +467,11 @@ void CrystalPlastSim<dim>::assemble_system(
       auto dΩ = fe_values.JxW(q_point);
       {
         timer.enter_subsection("Compute jl");
-        double vonMise;
-        compute_jl(cell_rhs_raw.data(), cell_matrix_raw.data(), &vonMise,
+        auto data = reinterpret_cast<QuadraturePointData *>(cell->user_pointer())[q_point];
+        compute_jl(cell_rhs_raw.data(), cell_matrix_raw.data(), &data,
                 convert_tensor_to_array(grad_u_q), δui_jl.data(), grad_δui_jl.data(), dofs_per_cell, dΩ, mp);
-        reinterpret_cast<QuadraturePointData *>(cell->user_pointer())[q_point].mise = vonMise;
+
+        /* reinterpret_cast<QuadraturePointData *>(cell->user_pointer())[q_point].mise = vonMise; */
         /* std::cout << "von Mise in C++: " << vonMise << std::endl; */
         timer.leave_subsection();
       };

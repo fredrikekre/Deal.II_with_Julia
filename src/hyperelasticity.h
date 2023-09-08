@@ -31,7 +31,8 @@ struct QuadraturePointData;
 template <int dim> class CrystalPlastSim {
 public:
   /* using FuncType = void(*)(double*, double*, std::array<double, dim*dim>, std::array<double, dim>*, std::array<double, dim*dim>*, int, double, NeoHooke); */
-  using FuncType = void(*)(double*, double*, double*, std::array<double, dim*dim>, std::array<double, dim>*, std::array<double, dim*dim>*, int, double, NeoHooke);
+  /* using FuncType = void(*)(double*, double*, double*, std::array<double, dim*dim>, std::array<double, dim>*, std::array<double, dim*dim>*, int, double, NeoHooke); */
+  using FuncType = void(*)(double*, double*, QuadraturePointData*, std::array<double, dim*dim>, std::array<double, dim>*, std::array<double, dim*dim>*, int, double, NeoHooke);
 
   explicit CrystalPlastSim();
   virtual ~CrystalPlastSim();
