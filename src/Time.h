@@ -1,9 +1,4 @@
-//
-// Created by kristoffer on 2015-12-01.
-//
-
-#ifndef PROJECT_TIME_H
-#define PROJECT_TIME_H
+#pragma once
 
 class Time {
 public:
@@ -27,5 +22,3 @@ private:
   const double time_end;
   const double delta_t;
 };
-
-#endif // PROJECT_TIME_H

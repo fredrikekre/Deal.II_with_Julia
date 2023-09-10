@@ -1,5 +1,4 @@
-#ifndef HYPERELASTICITY_H
-#define HYPERELASTICITY_H
+#pragma once
 
 #include "Time.h"
 
@@ -93,5 +92,3 @@ private:
 };
 
 } // namespace HyperelasticityNS
-
-#endif // HYPERELASTICITY_H
