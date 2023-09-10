@@ -5,7 +5,7 @@
 #include "hyperelasticity.h"
 
 #ifndef JULIA_SOURCE_FILE
-#define JULIA_SOURCE_FILE "../src/hyperelasticity.jl"
+#define JULIA_SOURCE_FILE "./src/hyperelasticity.jl"
 #endif
 
 #include <deal.II/grid/tria_accessor.h>
