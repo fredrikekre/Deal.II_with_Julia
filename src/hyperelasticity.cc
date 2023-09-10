@@ -551,11 +551,11 @@ jl_value_t *checked_eval_string(const char* code)
 
 int main() {
   using dealii::deallog;
-  using HyperelasticityNS::hyperelasticitySim;
+  using HyperelasticityNS::HyperelasticitySim;
 
   try {
     deallog.depth_console(0);
-    std::ofstream log_out("cryst_plast.log");
+    std::ofstream log_out("hyperelasticity.log");
     deallog.attach(log_out);
 
     /* required: setup the Julia context */
@@ -565,8 +565,8 @@ int main() {
     auto str = std::string("include(\"") + std::string(JULIA_SOURCE_FILE) + std::string("\")");
     checked_eval_string(str.c_str());
 
-    HyperelasticitySim<3> cp;
-    cp.run();
+    HyperelasticitySim<3> sim;
+    sim.run();
   } catch (std::exception &exc) {
     std::cerr << std::endl
               << std::endl
