@@ -37,6 +37,9 @@ end
 
 
 function do_assemble!(ge::Ptr{Float64}, ke::Ptr{Float64}, new_state::Ptr, prev_state::MaterialState, ∇u::Tensor{2, dim}, δuis::Ptr, ∇δuis::Ptr, ndofs, dΩ, mp::NeoHooke) where {dim}
+
+    # Note: Using the package UnsafeArrays.jl avoids the alloc and GC of the
+    #       Array metadata (the data will be shared regardless).
     ge    = unsafe_wrap(Array, ge, ndofs)
     ke    = unsafe_wrap(Array, ke, (ndofs, ndofs))
     δuis  = unsafe_wrap(Array, δuis, ndofs)
