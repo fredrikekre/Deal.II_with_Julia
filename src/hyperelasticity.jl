@@ -1,12 +1,12 @@
 using Tensors
 
 struct NeoHooke
-    μ::Float64
-    λ::Float64
+    μ::Float64 # <=> double
+    λ::Float64 # <=> double
 end
 
 struct MaterialState
-    σ::Tensor{2, 3, Cdouble, 9} # std::array<Cdouble, 9>
+    σ::Tensor{2, 3, Float64, 9} # <=> std::array<double, 9>
 end
 
 function Ψ(C, mp::NeoHooke)
@@ -49,6 +49,7 @@ function do_assemble!(ge::Vector{Float64}, ke::Matrix{Float64}, new_state::Ptr{M
     # Compute deformation gradient F and right Cauchy-Green tensor C
     F = one(∇u) + ∇u
     C = tdot(F) # F' ⋅ F
+
     # Compute stress and tangent
     S, ∂S∂C = constitutive_driver(C, mp)
     P = F ⋅ S
@@ -71,10 +72,9 @@ function do_assemble!(ge::Vector{Float64}, ke::Matrix{Float64}, new_state::Ptr{M
         end
     end
 
-    # Store the Cauchy stress
+    # Store the Cauchy stress as material state
     σ = P ⋅ F' / det(F)
-    # vM = sqrt(3/2 * dev(σ) ⊡ dev(σ))
     unsafe_store!(new_state, MaterialState(σ))
-    # println("Stress norm in julia: ", vM)
-    return
+
+    return nothing
 end
