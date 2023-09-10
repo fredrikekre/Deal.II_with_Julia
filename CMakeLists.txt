@@ -18,7 +18,7 @@ add_compile_options(-DJULIA_SOURCE_FILE="${CMAKE_CURRENT_SOURCE_DIR}/src/hyperel
 set(TARGET "hyperelasticity")
 set(TARGET_SRC src/${TARGET}.cc)
 
-find_package(deal.II 9.5.1
+find_package(deal.II 9.5.0
   HINTS ${deal.II_DIR} ${DEAL_II_DIR} ../ ../../ $ENV{DEAL_II_DIR}
   )
 if(NOT ${deal.II_FOUND})
