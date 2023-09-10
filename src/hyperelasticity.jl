@@ -1,12 +1,12 @@
 using Tensors
 
 struct NeoHooke
-    μ::Float64 # <=> double
-    λ::Float64 # <=> double
+    μ::Float64 # double
+    λ::Float64 # double
 end
 
 struct MaterialState
-    σ::Tensor{2, 3, Float64, 9} # <=> std::array<double, 9>
+    σ::Tensor{2, 3, Float64, 9} # std::array<double, 9>
 end
 
 function Ψ(C, mp::NeoHooke)
@@ -35,20 +35,13 @@ function compute_mise(state::MaterialState)
     return r
 end
 
+function do_assemble!(
+        ge::Vector{Float64}, ke::Matrix{Float64},
+        new_state::Ptr{MaterialState}, prev_state::MaterialState,
+        ∇u::Tensor{2}, δuis::Vector{<:Vec}, ∇δuis::Vector{<:Tensor{2}},
+        ndofs, dΩ::Float64, mp::NeoHooke
+    )
 
-function do_assemble!(ge::Ptr{Float64}, ke::Ptr{Float64}, new_state::Ptr, prev_state::MaterialState, ∇u::Tensor{2, dim}, δuis::Ptr, ∇δuis::Ptr, ndofs, dΩ, mp::NeoHooke) where {dim}
-
-    # Note: Using the package UnsafeArrays.jl avoids the alloc and GC of the
-    #       Array metadata (the data will be shared regardless).
-    ge    = unsafe_wrap(Array, ge, ndofs)
-    ke    = unsafe_wrap(Array, ke, (ndofs, ndofs))
-    δuis  = unsafe_wrap(Array, δuis, ndofs)
-    ∇δuis = unsafe_wrap(Array, ∇δuis, ndofs)
-
-    do_assemble!(ge, ke, new_state, prev_state, ∇u, δuis, ∇δuis, ndofs, dΩ, mp)
-end
-
-function do_assemble!(ge::Vector{Float64}, ke::Matrix{Float64}, new_state::Ptr{MaterialState}, prev_state::MaterialState, ∇u::Tensor{2, dim}, δuis::Vector{<:Vec}, ∇δuis::Vector{<:Tensor{2}}, ndofs, dΩ::Float64, mp::NeoHooke) where {dim}
     # Compute deformation gradient F and right Cauchy-Green tensor C
     F = one(∇u) + ∇u
     C = tdot(F) # F' ⋅ F
@@ -80,4 +73,29 @@ function do_assemble!(ge::Vector{Float64}, ke::Matrix{Float64}, new_state::Ptr{M
     unsafe_store!(new_state, MaterialState(σ))
 
     return nothing
+end
+
+# Entry point from C
+function do_assemble!(
+    #             Type in Julia                     Type in C
+    ge         :: Ptr{Float64},                   # double*
+    ke         :: Ptr{Float64},                   # double*
+    new_state  :: Ptr{MaterialState},             # MaterialState*
+    prev_state :: MaterialState,                  # MaterialState
+    ∇u         :: Tensor{2, dim, Float64},        # std::array<double, dim * dim>
+    δuis       :: Ptr{Vec{dim, Float64}},         # std::array<double, dim>*
+    ∇δuis      :: Ptr{<:Tensor{2, dim, Float64}}, # std::array<double, dim * dim>*
+    ndofs      :: Int32,                          # int
+    dΩ         :: Float64,                        # double
+    mp         :: NeoHooke,                       # NeoHooke
+) where {dim}
+
+    # Note: Using the package UnsafeArrays.jl avoids the alloc and GC of the
+    #       Array metadata (the data will be shared regardless).
+    ge    = unsafe_wrap(Array, ge, ndofs)
+    ke    = unsafe_wrap(Array, ke, (ndofs, ndofs))
+    δuis  = unsafe_wrap(Array, δuis, ndofs)
+    ∇δuis = unsafe_wrap(Array, ∇δuis, ndofs)
+
+    do_assemble!(ge, ke, new_state, prev_state, ∇u, δuis, ∇δuis, ndofs, dΩ, mp)
 end
