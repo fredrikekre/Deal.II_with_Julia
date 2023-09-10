@@ -4,26 +4,25 @@
 #include "Time.h"
 
 /* #include <deal.II/base/parameter_handler.h> */
+#include <deal.II/base/timer.h>
+#include <deal.II/dofs/dof_handler.h>
+#include <deal.II/fe/fe_system.h>
 #include <deal.II/grid/tria.h>
 #include <deal.II/grid/tria_accessor.h>
 #include <deal.II/grid/tria_iterator.h>
-#include <deal.II/fe/fe_system.h>
-#include <deal.II/lac/sparse_matrix.h>
-#include <deal.II/dofs/dof_handler.h>
-#include <deal.II/base/timer.h>
 #include <deal.II/lac/affine_constraints.h>
+#include <deal.II/lac/sparse_matrix.h>
 #include <deal.II/lac/vector.h>
 
+#include <deal.II/base/quadrature_lib.h>
 #include <string>
 #include <vector>
-#include <deal.II/base/quadrature_lib.h>
 
 namespace HyperelasticityNS {
 
-
 struct NeoHooke {
-    double mu;
-    double lambda;
+  double mu;
+  double lambda;
 };
 
 struct QuadraturePointData;

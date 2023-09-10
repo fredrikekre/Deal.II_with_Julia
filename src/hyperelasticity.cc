@@ -1,6 +1,7 @@
 /*
- Copyright 2015 Kristoffer Carlsson kristoffer.carlsson@chalmers.se
-*/
+ * MIT License
+ * Copyright (c) 2023 Kristoffer Carlsson, Fredrik Ekre
+ */
 
 #include "hyperelasticity.h"
 
@@ -8,44 +9,43 @@
 #define JULIA_SOURCE_FILE "./src/hyperelasticity.jl"
 #endif
 
-#include <deal.II/grid/tria_accessor.h>
-#include <deal.II/grid/tria_iterator.h>
-#include <deal.II/grid/grid_generator.h>
-#include <deal.II/grid/grid_tools.h>
-#include <deal.II/grid/manifold_lib.h>
-#include <deal.II/grid/grid_out.h>
+#include <deal.II/base/exceptions.h>
 #include <deal.II/base/function.h>
+#include <deal.II/base/symmetric_tensor.h>
+#include <deal.II/base/tensor.h>
+#include <deal.II/base/timer.h>
+#include <deal.II/dofs/dof_renumbering.h>
+#include <deal.II/dofs/dof_tools.h>
 #include <deal.II/fe/fe_q.h>
 #include <deal.II/fe/fe_system.h>
 #include <deal.II/fe/fe_tools.h>
 #include <deal.II/fe/fe_values.h>
-#include <deal.II/dofs/dof_tools.h>
-#include <deal.II/lac/sparse_matrix.h>
-#include <deal.II/lac/dynamic_sparsity_pattern.h>
-#include <deal.II/dofs/dof_renumbering.h>
-#include <deal.II/base/symmetric_tensor.h>
-#include <deal.II/base/tensor.h>
-#include <deal.II/base/timer.h>
-#include <deal.II/numerics/vector_tools.h>
-#include <deal.II/numerics/matrix_tools.h>
-#include <deal.II/lac/solver_cg.h>
-#include <deal.II/lac/solver_bicgstab.h>
-#include <deal.II/lac/precondition_selector.h>
-#include <deal.II/lac/precondition.h>
-#include <deal.II/numerics/data_out.h>
-#include <deal.II/lac/sparse_direct.h>
+#include <deal.II/grid/grid_generator.h>
+#include <deal.II/grid/grid_out.h>
+#include <deal.II/grid/grid_tools.h>
+#include <deal.II/grid/manifold_lib.h>
+#include <deal.II/grid/tria_accessor.h>
+#include <deal.II/grid/tria_iterator.h>
 #include <deal.II/lac/affine_constraints.h>
+#include <deal.II/lac/dynamic_sparsity_pattern.h>
+#include <deal.II/lac/precondition.h>
+#include <deal.II/lac/precondition_selector.h>
+#include <deal.II/lac/solver_bicgstab.h>
+#include <deal.II/lac/solver_cg.h>
+#include <deal.II/lac/sparse_direct.h>
+#include <deal.II/lac/sparse_matrix.h>
 #include <deal.II/lac/vector.h>
-#include <deal.II/base/exceptions.h>
+#include <deal.II/numerics/data_out.h>
+#include <deal.II/numerics/matrix_tools.h>
+#include <deal.II/numerics/vector_tools.h>
 /* #include <deal.II/grid/grid_refinement.h> */
 #include <julia.h>
 
-#include <iostream>
 #include <fstream>
+#include <iostream>
 #include <vector>
 
 namespace HyperelasticityNS {
-
 
 struct QuadraturePointData {
   double mise;
@@ -54,20 +54,21 @@ struct QuadraturePointData {
 
 using namespace dealii;
 
-template<int dim>
+template <int dim>
 std::array<double, dim> convert_tensor_to_array(dealii::Tensor<1, dim> a) {
-    std::array<double, dim> tmp;
-    for (int i = 0; i < dim; ++i)
-        tmp[i] = a[i];
-    return tmp;
+  std::array<double, dim> tmp;
+  for (int i = 0; i < dim; ++i)
+    tmp[i] = a[i];
+  return tmp;
 }
 
 std::array<double, 4> convert_tensor_to_array(dealii::Tensor<2, 2> a) {
-    return std::array<double, 4> {{a[0][0], a[0][1], a[1][0], a[1][1]}};
+  return std::array<double, 4>{{a[0][0], a[0][1], a[1][0], a[1][1]}};
 }
 
 std::array<double, 9> convert_tensor_to_array(dealii::Tensor<2, 3> a) {
-    return std::array<double, 9> {{a[0][0], a[0][1], a[0][2], a[1][0], a[1][1], a[1][2], a[2][0], a[2][1], a[2][2]}};
+  return std::array<double, 9>{{a[0][0], a[0][1], a[0][2], a[1][0], a[1][1],
+                                a[1][2], a[2][0], a[2][1], a[2][2]}};
 }
 
 /*
@@ -81,10 +82,12 @@ public:
 
   double get_time() const;
 
-  virtual void vector_value(const Point<dim> &p, Vector<double> &values) const override;
+  virtual void vector_value(const Point<dim> &p,
+                            Vector<double> &values) const override;
 
-  virtual void vector_value_list(const std::vector<Point<dim>> &points,
-                                 std::vector<Vector<double>> &value_list) const override;
+  virtual void
+  vector_value_list(const std::vector<Point<dim>> &points,
+                    std::vector<Vector<double>> &value_list) const override;
 
 private:
   const double time;
@@ -125,10 +128,7 @@ void BoundaryValues<dim>::vector_value_list(
  */
 template <int dim>
 HyperelasticitySim<dim>::HyperelasticitySim()
-    :
-      degree(1),
-      fe(FE_Q<dim>(1), dim),
-      dofs_per_cell(fe.dofs_per_cell),
+    : degree(1), fe(FE_Q<dim>(1), dim), dofs_per_cell(fe.dofs_per_cell),
       dof_handler(triangulation),
       timer(std::cout, TimerOutput::summary, TimerOutput::wall_times),
       q_cell(2),
@@ -172,7 +172,6 @@ template <int dim> void HyperelasticitySim<dim>::run() {
   }
 }
 
-
 template <int dim> void HyperelasticitySim<dim>::make_grid() {
   deallog << "Creating mesh" << std::endl << std::flush;
 
@@ -183,11 +182,11 @@ template <int dim> void HyperelasticitySim<dim>::make_grid() {
 }
 
 /*
-* Creates the dofs for the fe systems,
-* Reorder the dofs,
-* Creates the sparsity pattern,
-* Computes dirichlet contrains
-*/
+ * Creates the dofs for the fe systems,
+ * Reorder the dofs,
+ * Creates the sparsity pattern,
+ * Computes dirichlet contrains
+ */
 template <int dim> void HyperelasticitySim<dim>::system_setup() {
 
   setup_quadrature_point_data();
@@ -216,8 +215,7 @@ template <int dim> void HyperelasticitySim<dim>::system_setup() {
   system_rhs.reinit(dof_handler.n_dofs());
 }
 
-template <int dim>
-void HyperelasticitySim<dim>::output_results() {
+template <int dim> void HyperelasticitySim<dim>::output_results() {
   static int n_output = 0;
   DataOut<dim> data_out;
   std::vector<std::string> solution_names(dim, "displacements");
@@ -235,7 +233,8 @@ void HyperelasticitySim<dim>::output_results() {
     double weighted_stress = 0.0;
     double volume = 0.0;
     for (unsigned int q = 0; q < n_q_points; ++q) {
-      auto data = reinterpret_cast<QuadraturePointData *>(cell->user_pointer())[q];
+      auto data =
+          reinterpret_cast<QuadraturePointData *>(cell->user_pointer())[q];
       weighted_stress += data.mise * data.JxW;
       volume += data.JxW;
     }
@@ -251,8 +250,7 @@ void HyperelasticitySim<dim>::output_results() {
   data_out.write_vtu(out);
 }
 
-template <int dim>
-void HyperelasticitySim<dim>::get_error_residual() {
+template <int dim> void HyperelasticitySim<dim>::get_error_residual() {
   Vector<double> error_res(dof_handler.n_dofs());
   for (unsigned int i = 0; i < dof_handler.n_dofs(); ++i)
     if (!dirichlet_constraints.is_constrained(i))
@@ -282,10 +280,10 @@ Vector<double> HyperelasticitySim<dim>::get_total_solution(
 }
 
 /*
-* ********
-* SOLVERS
-* ********
-*/
+ * ********
+ * SOLVERS
+ * ********
+ */
 
 template <int dim>
 void HyperelasticitySim<dim>::solve_nonlinear_timestep(
@@ -301,17 +299,16 @@ void HyperelasticitySim<dim>::solve_nonlinear_timestep(
   error_update_0.reset();
   error_update_norm.reset();
   /*
-  * We make the dirichlet constrains before the newton iterations
-  * and distribute it to the full solution vector.
-  * We will then use zero boundary conditions for the newton updats
-  * so the distributed values will be never change:
-  */
+   * We make the dirichlet constrains before the newton iterations
+   * and distribute it to the full solution vector.
+   * We will then use zero boundary conditions for the newton updats
+   * so the distributed values will be never change:
+   */
   make_dirichlet_constraints();
   dirichlet_constraints.distribute(solution_n);
   print_conv_header();
   unsigned int newton_iteration = 1;
-  for (; newton_iteration <= 10;
-       ++newton_iteration) {
+  for (; newton_iteration <= 10; ++newton_iteration) {
     std::cout << " " << std::setw(2) << newton_iteration << " " << std::flush;
     tangent_matrix = 0.0;
     system_rhs = 0.0;
@@ -326,8 +323,7 @@ void HyperelasticitySim<dim>::solve_nonlinear_timestep(
     error_residual_norm = error_residual;
     error_residual_norm.normalise(error_residual_0);
 
-    if (newton_iteration > 1 &&
-        error_update_norm.u <= 1e-6 &&
+    if (newton_iteration > 1 && error_update_norm.u <= 1e-6 &&
         error_residual_norm.u <= 1e-6) {
       std::cout << " CONVERGED! " << std::endl;
       // We converged, so update the gauss points with the new quadrature
@@ -356,8 +352,7 @@ void HyperelasticitySim<dim>::solve_nonlinear_timestep(
 
 template <int dim>
 std::pair<unsigned int, double>
-HyperelasticitySim<dim>::solve_linear_system(
-    Vector<double> &newton_update) {
+HyperelasticitySim<dim>::solve_linear_system(Vector<double> &newton_update) {
   timer.enter_subsection("Solving linear system");
   std::cout << " SLV " << std::flush;
   unsigned int lin_it = 0;
@@ -372,8 +367,7 @@ HyperelasticitySim<dim>::solve_linear_system(
   return std::make_pair(lin_it, lin_res);
 }
 
-template <int dim>
-void HyperelasticitySim<dim>::print_conv_header() {
+template <int dim> void HyperelasticitySim<dim>::print_conv_header() {
   static const unsigned int l_width = 100;
   for (unsigned int i = 0; i < l_width; ++i)
     std::cout << "_";
@@ -387,8 +381,7 @@ void HyperelasticitySim<dim>::print_conv_header() {
   std::cout << std::endl;
 }
 
-template <int dim>
-void HyperelasticitySim<dim>::print_conv_footer() {
+template <int dim> void HyperelasticitySim<dim>::print_conv_footer() {
   static const unsigned int l_width = 155;
   for (unsigned int i = 0; i < l_width; ++i)
     std::cout << "_";
@@ -400,9 +393,6 @@ void HyperelasticitySim<dim>::print_conv_footer() {
             << std::endl;
 }
 
-
-
-
 template <int dim>
 void HyperelasticitySim<dim>::assemble_system(
     const Vector<double> &solution_delta) {
@@ -411,9 +401,9 @@ void HyperelasticitySim<dim>::assemble_system(
 
   timer.enter_subsection("Preamble");
 
-  FEValues<dim> fe_values(fe, q_cell, update_values | update_gradients |
-                                          update_JxW_values |
-                                          update_quadrature_points);
+  FEValues<dim> fe_values(fe, q_cell,
+                          update_values | update_gradients | update_JxW_values |
+                              update_quadrature_points);
   auto total_solution = get_total_solution(solution_delta);
   std::vector<types::global_dof_index> local_dof_indices(dofs_per_cell);
   const FEValuesExtractors::Vector displacement(0);
@@ -440,9 +430,7 @@ void HyperelasticitySim<dim>::assemble_system(
   std::vector<Tensor<2, dim>> grad_u(n_q_points);
   timer.leave_subsection();
 
-
-  for (const auto &cell : dof_handler.active_cell_iterators())
-  {
+  for (const auto &cell : dof_handler.active_cell_iterators()) {
     timer.enter_subsection("Loop cells");
 
     cell_matrix = 0;
@@ -454,11 +442,9 @@ void HyperelasticitySim<dim>::assemble_system(
 
     fe_values[displacement].get_function_gradients(total_solution, grad_u);
 
-    for (unsigned int q_point = 0; q_point < n_q_points; ++q_point)
-    {
+    for (unsigned int q_point = 0; q_point < n_q_points; ++q_point) {
       auto grad_u_q = grad_u[q_point];
-      for (unsigned int i = 0; i < dofs_per_cell; ++i)
-      {
+      for (unsigned int i = 0; i < dofs_per_cell; ++i) {
         δui[i] = fe_values[displacement].value(i, q_point);
         δui_jl[i] = convert_tensor_to_array(δui[i]);
         grad_δui[i] = fe_values[displacement].gradient(i, q_point);
@@ -467,16 +453,18 @@ void HyperelasticitySim<dim>::assemble_system(
       auto dΩ = fe_values.JxW(q_point);
       {
         timer.enter_subsection("Compute jl");
-        auto data = reinterpret_cast<QuadraturePointData *>(cell->user_pointer())[q_point];
+        auto data = reinterpret_cast<QuadraturePointData *>(
+            cell->user_pointer())[q_point];
         compute_jl(cell_rhs_raw.data(), cell_matrix_raw.data(), &data,
-                convert_tensor_to_array(grad_u_q), δui_jl.data(), grad_δui_jl.data(), dofs_per_cell, dΩ, mp);
+                   convert_tensor_to_array(grad_u_q), δui_jl.data(),
+                   grad_δui_jl.data(), dofs_per_cell, dΩ, mp);
 
-        /* reinterpret_cast<QuadraturePointData *>(cell->user_pointer())[q_point].mise = vonMise; */
+        /* reinterpret_cast<QuadraturePointData
+         * *>(cell->user_pointer())[q_point].mise = vonMise; */
         /* std::cout << "von Mise in C++: " << vonMise << std::endl; */
         timer.leave_subsection();
       };
     }
-
 
     // Loop over cell_rhs_raw and copy to cell_rhs
     for (unsigned int i = 0; i < dofs_per_cell; ++i)
@@ -484,8 +472,7 @@ void HyperelasticitySim<dim>::assemble_system(
 
     int m = 0;
     for (unsigned int i = 0; i < dofs_per_cell; ++i)
-      for (unsigned int j = 0; j < dofs_per_cell; ++j)
-      {
+      for (unsigned int j = 0; j < dofs_per_cell; ++j) {
         cell_matrix[i][j] = cell_matrix_raw[m];
         m++;
       }
@@ -494,13 +481,11 @@ void HyperelasticitySim<dim>::assemble_system(
     newton_constraints.distribute_local_to_global(
         cell_matrix, cell_rhs, local_dof_indices, tangent_matrix, system_rhs);
     timer.leave_subsection();
-
   }
   timer.leave_subsection();
 }
 
-template <int dim>
-void HyperelasticitySim<dim>::make_dirichlet_constraints() {
+template <int dim> void HyperelasticitySim<dim>::make_dirichlet_constraints() {
   std::cout << " CST " << std::endl << std::flush;
   dirichlet_constraints.clear();
   DoFTools::make_hanging_node_constraints(dof_handler, dirichlet_constraints);
@@ -510,8 +495,7 @@ void HyperelasticitySim<dim>::make_dirichlet_constraints() {
   dirichlet_constraints.close();
 }
 
-template <int dim>
-void HyperelasticitySim<dim>::setup_quadrature_point_data() {
+template <int dim> void HyperelasticitySim<dim>::setup_quadrature_point_data() {
   deallog << "Setting up quadrature point history" << std::endl << std::flush;
   triangulation.clear_user_data();
   {
@@ -530,8 +514,7 @@ void HyperelasticitySim<dim>::setup_quadrature_point_data() {
           << std::flush;
 }
 
-}
-
+} // namespace HyperelasticityNS
 
 jl_value_t *checked_eval_string(const char* code)
 {
@@ -562,7 +545,8 @@ int main() {
     jl_init();
 
     /* run Julia commands */
-    auto str = std::string("include(\"") + std::string(JULIA_SOURCE_FILE) + std::string("\")");
+    auto str = std::string("include(\"") + std::string(JULIA_SOURCE_FILE) +
+               std::string("\")");
     checked_eval_string(str.c_str());
 
     HyperelasticitySim<3> sim;
