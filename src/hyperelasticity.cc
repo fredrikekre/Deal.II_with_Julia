@@ -1,14 +1,11 @@
 // MIT License
 // Copyright (c) 2023 Kristoffer Carlsson, Fredrik Ekre
 
-#include "hyperelasticity.h"
+#include <fstream>
+#include <iostream>
+#include <vector>
 
-// Julia header and source file
 #include <julia.h>
-
-#ifndef JULIA_SOURCE_FILE
-#define JULIA_SOURCE_FILE "./src/hyperelasticity.jl"
-#endif
 
 #include <deal.II/base/exceptions.h>
 #include <deal.II/base/function.h>
@@ -29,10 +26,6 @@
 #include <deal.II/grid/tria_iterator.h>
 #include <deal.II/lac/affine_constraints.h>
 #include <deal.II/lac/dynamic_sparsity_pattern.h>
-#include <deal.II/lac/precondition.h>
-#include <deal.II/lac/precondition_selector.h>
-#include <deal.II/lac/solver_bicgstab.h>
-#include <deal.II/lac/solver_cg.h>
 #include <deal.II/lac/sparse_direct.h>
 #include <deal.II/lac/sparse_matrix.h>
 #include <deal.II/lac/vector.h>
@@ -40,9 +33,11 @@
 #include <deal.II/numerics/matrix_tools.h>
 #include <deal.II/numerics/vector_tools.h>
 
-#include <fstream>
-#include <iostream>
-#include <vector>
+#include "hyperelasticity.h"
+
+#ifndef JULIA_SOURCE_FILE
+#define JULIA_SOURCE_FILE "./src/hyperelasticity.jl"
+#endif
 
 namespace HyperelasticityNS {
 
@@ -157,6 +152,7 @@ template <int dim> void HyperelasticitySim<dim>::run() {
     solution_n += solution_delta;
     output_results();
     time.increment();
+    break;
   }
 }
 

@@ -5,8 +5,10 @@
 
 #pragma once
 
-#include "Time.h"
+#include <array>
+#include <vector>
 
+#include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/timer.h>
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/fe/fe_system.h>
@@ -17,9 +19,7 @@
 #include <deal.II/lac/sparse_matrix.h>
 #include <deal.II/lac/vector.h>
 
-#include <deal.II/base/quadrature_lib.h>
-#include <string>
-#include <vector>
+#include "Time.h"
 
 namespace HyperelasticityNS {
 
