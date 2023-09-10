@@ -5,9 +5,8 @@ struct NeoHooke
     λ::Float64
 end
 
-struct QuadraturePointData
-    mise::Float64
-    JxW::Float64
+struct MaterialState
+    σ::Tensor{2, 3, Cdouble, 9} # std::array<Cdouble, 9>
 end
 
 function Ψ(C, mp::NeoHooke)
@@ -31,17 +30,24 @@ function constitutive_driver(F, mp::NeoHooke)
     return P, ∂P∂F
 end;
 
+function compute_mise(m::Ptr{Float64}, state::MaterialState)
+    r = √(3/2 * dev(state.σ) ⊡ dev(state.σ))
+    println("Mise in Julia: $(r)")
+    unsafe_store!(m, r)
+    return nothing
+end
 
-function do_assemble!(ge::Ptr{Float64}, ke::Ptr{Float64}, data_ptr::Ptr, ∇u::Tensor{2, dim}, δuis::Ptr, ∇δuis::Ptr, ndofs, dΩ, mp::NeoHooke) where {dim}
+
+function do_assemble!(ge::Ptr{Float64}, ke::Ptr{Float64}, new_state::Ptr, prev_state::MaterialState, ∇u::Tensor{2, dim}, δuis::Ptr, ∇δuis::Ptr, ndofs, dΩ, mp::NeoHooke) where {dim}
     ge    = unsafe_wrap(Array, ge, ndofs)
     ke    = unsafe_wrap(Array, ke, (ndofs, ndofs))
     δuis  = unsafe_wrap(Array, δuis, ndofs)
     ∇δuis = unsafe_wrap(Array, ∇δuis, ndofs)
 
-    do_assemble!(ge, ke, data_ptr, ∇u, δuis, ∇δuis, ndofs, dΩ, mp)
+    do_assemble!(ge, ke, new_state, prev_state, ∇u, δuis, ∇δuis, ndofs, dΩ, mp)
 end
 
-function do_assemble!(ge::Vector{Float64}, ke::Matrix{Float64}, data_ptr::Ptr{QuadraturePointData}, ∇u::Tensor{2, dim}, δuis::Vector{<:Vec}, ∇δuis::Vector{<:Tensor{2}}, ndofs, dΩ::Float64, mp::NeoHooke) where {dim}
+function do_assemble!(ge::Vector{Float64}, ke::Matrix{Float64}, new_state::Ptr{MaterialState}, prev_state::MaterialState, ∇u::Tensor{2, dim}, δuis::Vector{<:Vec}, ∇δuis::Vector{<:Tensor{2}}, ndofs, dΩ::Float64, mp::NeoHooke) where {dim}
     # Compute deformation gradient F and right Cauchy-Green tensor C
     F = one(∇u) + ∇u
     C = tdot(F) # F' ⋅ F
@@ -69,9 +75,8 @@ function do_assemble!(ge::Vector{Float64}, ke::Matrix{Float64}, data_ptr::Ptr{Qu
 
     # Store the Cauchy stress
     σ = P ⋅ F' / det(F)
-    vM = sqrt(3/2 * dev(σ) ⊡ dev(σ))
-    unsafe_store!(data_ptr, QuadraturePointData(vM, dΩ))
+    # vM = sqrt(3/2 * dev(σ) ⊡ dev(σ))
+    unsafe_store!(new_state, MaterialState(σ))
     # println("Stress norm in julia: ", vM)
-
     return
 end

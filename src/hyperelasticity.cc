@@ -41,8 +41,23 @@
 
 namespace HyperelasticityNS {
 
+// Material parameters. Must map directly to the corresponding struct in hyperelasticity.jl
+struct NeoHooke {
+  double mu;
+  double lambda;
+};
+
+// Material state. Must map directly to the corresponding struct in hyperelasticity.jl
+template <int dim>
+struct MaterialState {
+  std::array<double, dim*dim> cauchy;
+};
+
+// QuadraturePointData
+template <int dim>
 struct QuadraturePointData {
-  double mise;
+  MaterialState<dim> prev_state;
+  MaterialState<dim> new_state;
   double JxW;
 };
 
@@ -118,13 +133,15 @@ HyperelasticitySim<dim>::HyperelasticitySim()
       timer(std::cout, TimerOutput::summary, TimerOutput::wall_times),
       q_cell(2), n_q_points(q_cell.size()), time(1.0, 0.1)
       {
-          compute_jl = reinterpret_cast<FuncType>(
-            jl_unbox_voidpointer(
-                // jl_eval_string("@cfunction(do_assemble!, Cvoid, (Ptr{Float64}, Ptr{Float64}, Tensor{2,3,Float64,9}, Ptr{Vec{3, Float64}}, Ptr{Tensor{2,3,Float64,9}}, Cint, Float64, NeoHooke))")
-                // jl_eval_string("@cfunction(do_assemble!, Cvoid, (Ptr{Float64}, Ptr{Float64}, Ptr{Float64}, Tensor{2,3,Float64,9}, Ptr{Vec{3, Float64}}, Ptr{Tensor{2,3,Float64,9}}, Cint, Float64, NeoHooke))")
-                jl_eval_string("@cfunction(do_assemble!, Cvoid, (Ptr{Float64}, Ptr{Float64}, Ptr{QuadraturePointData}, Tensor{2,3,Float64,9}, Ptr{Vec{3, Float64}}, Ptr{Tensor{2,3,Float64,9}}, Cint, Float64, NeoHooke))")
-            )
-        );
+  compute_jl = reinterpret_cast<FuncType>(jl_unbox_voidpointer(
+      jl_eval_string(
+          "@cfunction(do_assemble!, Cvoid, (Ptr{Cdouble}, Ptr{Cdouble}, "
+          "Ptr{MaterialState}, MaterialState, Tensor{2, 3, Cdouble, 9}, "
+          "Ptr{Vec{3, Cdouble}}, Ptr{Tensor{2, 3, Cdouble, 9}}, Cint, Cdouble, "
+          "NeoHooke))")));
+
+  compute_mise = reinterpret_cast<FuncType2>(jl_unbox_voidpointer(
+      jl_eval_string( "@cfunction(compute_mise, Cvoid, (Ptr{Cdouble}, MaterialState,))")));
       }
 
 template <int dim> HyperelasticitySim<dim>::~HyperelasticitySim() {
@@ -217,9 +234,11 @@ template <int dim> void HyperelasticitySim<dim>::output_results() {
     double weighted_stress = 0.0;
     double volume = 0.0;
     for (unsigned int q = 0; q < n_q_points; ++q) {
-      auto data =
-          reinterpret_cast<QuadraturePointData *>(cell->user_pointer())[q];
-      weighted_stress += data.mise * data.JxW;
+      auto data = reinterpret_cast<QuadraturePointData<dim> *>(cell->user_pointer())[q];
+      double m = 0;
+      compute_mise(&m, data.new_state);
+      std::cout << "Mise in C++ :" << data.JxW << std::endl;
+      weighted_stress += m * data.JxW;
       volume += data.JxW;
     }
     stress_out[index] = weighted_stress / volume;
@@ -437,11 +456,17 @@ void HyperelasticitySim<dim>::assemble_system(
       auto dΩ = fe_values.JxW(q_point);
       {
         timer.enter_subsection("Compute jl");
-        auto data = reinterpret_cast<QuadraturePointData *>(
+        auto data = reinterpret_cast<QuadraturePointData<dim> *>(
             cell->user_pointer())[q_point];
-        compute_jl(cell_rhs_raw.data(), cell_matrix_raw.data(), &data,
+        data.JxW = dΩ;
+        std::cout << "Weight: " << data.JxW << std::endl;
+        compute_jl(cell_rhs_raw.data(), cell_matrix_raw.data(), &(data.new_state), data.prev_state,
                    convert_tensor_to_array(grad_u_q), δui_jl.data(),
                    grad_δui_jl.data(), dofs_per_cell, dΩ, mp);
+        auto data2 = reinterpret_cast<QuadraturePointData<dim> *>(
+            cell->user_pointer())[q_point];
+        std::cout << "Weight 2: " << data2.JxW << std::endl;
+
 
         /* reinterpret_cast<QuadraturePointData
          * *>(cell->user_pointer())[q_point].mise = vonMise; */
@@ -483,7 +508,7 @@ template <int dim> void HyperelasticitySim<dim>::setup_quadrature_point_data() {
   deallog << "Setting up quadrature point history" << std::endl << std::flush;
   triangulation.clear_user_data();
   {
-    std::vector<QuadraturePointData> tmp;
+    std::vector<QuadraturePointData<dim>> tmp;
     tmp.swap(quadrature_point_data);
   }
   quadrature_point_data.resize(triangulation.n_active_cells() * n_q_points);
