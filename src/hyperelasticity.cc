@@ -1,9 +1,10 @@
-/*
- * MIT License
- * Copyright (c) 2023 Kristoffer Carlsson, Fredrik Ekre
- */
+// MIT License
+// Copyright (c) 2023 Kristoffer Carlsson, Fredrik Ekre
 
 #include "hyperelasticity.h"
+
+// Julia header and source file
+#include <julia.h>
 
 #ifndef JULIA_SOURCE_FILE
 #define JULIA_SOURCE_FILE "./src/hyperelasticity.jl"
@@ -38,8 +39,6 @@
 #include <deal.II/numerics/data_out.h>
 #include <deal.II/numerics/matrix_tools.h>
 #include <deal.II/numerics/vector_tools.h>
-/* #include <deal.II/grid/grid_refinement.h> */
-#include <julia.h>
 
 #include <fstream>
 #include <iostream>
@@ -71,11 +70,7 @@ std::array<double, 9> convert_tensor_to_array(dealii::Tensor<2, 3> a) {
                                 a[1][2], a[2][0], a[2][1], a[2][2]}};
 }
 
-/*
- *******************
- * Boundary values
- *******************
- */
+// Boundary values
 template <int dim> class BoundaryValues : public Function<dim> {
 public:
   BoundaryValues(const double time = 0.);
@@ -121,24 +116,17 @@ void BoundaryValues<dim>::vector_value_list(
     BoundaryValues<dim>::vector_value(points[p], value_list[p]);
 }
 
-/*
- *******************
- * hyperelasticity
- *******************
- */
 template <int dim>
 HyperelasticitySim<dim>::HyperelasticitySim()
     : degree(1), fe(FE_Q<dim>(1), dim), dofs_per_cell(fe.dofs_per_cell),
       dof_handler(triangulation),
       timer(std::cout, TimerOutput::summary, TimerOutput::wall_times),
-      q_cell(2),
-      n_q_points(q_cell.size()),
-      time(1.0, 0.1)
+      q_cell(2), n_q_points(q_cell.size()), time(1.0, 0.1)
       {
           compute_jl = reinterpret_cast<FuncType>(
             jl_unbox_voidpointer(
-                /* jl_eval_string("@cfunction(do_assemble!, Cvoid, (Ptr{Float64}, Ptr{Float64}, Tensor{2,3,Float64,9}, Ptr{Vec{3, Float64}}, Ptr{Tensor{2,3,Float64,9}}, Cint, Float64, NeoHooke))") */
-                /* jl_eval_string("@cfunction(do_assemble!, Cvoid, (Ptr{Float64}, Ptr{Float64}, Ptr{Float64}, Tensor{2,3,Float64,9}, Ptr{Vec{3, Float64}}, Ptr{Tensor{2,3,Float64,9}}, Cint, Float64, NeoHooke))") */
+                // jl_eval_string("@cfunction(do_assemble!, Cvoid, (Ptr{Float64}, Ptr{Float64}, Tensor{2,3,Float64,9}, Ptr{Vec{3, Float64}}, Ptr{Tensor{2,3,Float64,9}}, Cint, Float64, NeoHooke))")
+                // jl_eval_string("@cfunction(do_assemble!, Cvoid, (Ptr{Float64}, Ptr{Float64}, Ptr{Float64}, Tensor{2,3,Float64,9}, Ptr{Vec{3, Float64}}, Ptr{Tensor{2,3,Float64,9}}, Cint, Float64, NeoHooke))")
                 jl_eval_string("@cfunction(do_assemble!, Cvoid, (Ptr{Float64}, Ptr{Float64}, Ptr{QuadraturePointData}, Tensor{2,3,Float64,9}, Ptr{Vec{3, Float64}}, Ptr{Tensor{2,3,Float64,9}}, Cint, Float64, NeoHooke))")
             )
         );
@@ -541,14 +529,15 @@ int main() {
     std::ofstream log_out("hyperelasticity.log");
     deallog.attach(log_out);
 
-    /* required: setup the Julia context */
+    // Setup the julia context
     jl_init();
 
-    /* run Julia commands */
+    // Load the julia source file
     auto str = std::string("include(\"") + std::string(JULIA_SOURCE_FILE) +
                std::string("\")");
     checked_eval_string(str.c_str());
 
+    // Run the simulation
     HyperelasticitySim<3> sim;
     sim.run();
   } catch (std::exception &exc) {
@@ -575,6 +564,7 @@ int main() {
     jl_atexit_hook(1);
     return 1;
   }
+  // Shut down julia and return
   jl_atexit_hook(0);
   return 0;
 }
