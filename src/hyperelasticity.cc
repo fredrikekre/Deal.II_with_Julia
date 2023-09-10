@@ -423,10 +423,8 @@ void HyperelasticitySim<dim>::assemble_system(
   std::vector<double> cell_matrix_raw(dofs_per_cell * dofs_per_cell);
   std::vector<double> cell_rhs_raw(dofs_per_cell);
 
-  std::vector<Tensor<1, dim>> δui(dofs_per_cell);
-  std::vector<std::array<double, dim>> δui_jl(dofs_per_cell);
-  std::vector<Tensor<2, dim>> grad_δui(dofs_per_cell);
-  std::vector<std::array<double, dim * dim>> grad_δui_jl(dofs_per_cell);
+  std::vector<std::array<double, dim>> δui(dofs_per_cell);
+  std::vector<std::array<double, dim * dim>> grad_δui(dofs_per_cell);
 
   std::vector<Tensor<2, dim>> grad_u(n_q_points);
   timer.leave_subsection();
@@ -446,10 +444,10 @@ void HyperelasticitySim<dim>::assemble_system(
     for (unsigned int q_point = 0; q_point < n_q_points; ++q_point) {
       auto grad_u_q = grad_u[q_point];
       for (unsigned int i = 0; i < dofs_per_cell; ++i) {
-        δui[i] = fe_values[displacement].value(i, q_point);
-        δui_jl[i] = convert_tensor_to_array(δui[i]);
-        grad_δui[i] = fe_values[displacement].gradient(i, q_point);
-        grad_δui_jl[i] = convert_tensor_to_array(grad_δui[i]);
+        δui[i] =
+            convert_tensor_to_array(fe_values[displacement].value(i, q_point));
+        grad_δui[i] = convert_tensor_to_array(
+            fe_values[displacement].gradient(i, q_point));
       }
       auto dΩ = fe_values.JxW(q_point);
       {
@@ -459,8 +457,8 @@ void HyperelasticitySim<dim>::assemble_system(
         data.JxW = dΩ;
         jl_assemble(cell_rhs_raw.data(), cell_matrix_raw.data(),
                     &(data.new_state), data.prev_state,
-                    convert_tensor_to_array(grad_u_q), δui_jl.data(),
-                    grad_δui_jl.data(), dofs_per_cell, dΩ, mp);
+                    convert_tensor_to_array(grad_u_q), δui.data(),
+                    grad_δui.data(), dofs_per_cell, dΩ, mp);
         timer.leave_subsection();
       };
     }
