@@ -41,21 +41,21 @@
 
 namespace HyperelasticityNS {
 
-// Material parameters. Must map directly to the corresponding struct in hyperelasticity.jl
+// Material parameters. Must map directly to the corresponding struct in
+// hyperelasticity.jl
 struct NeoHooke {
   double mu;
   double lambda;
 };
 
-// Material state. Must map directly to the corresponding struct in hyperelasticity.jl
-template <int dim>
-struct MaterialState {
-  std::array<double, dim*dim> cauchy;
+// Material state. Must map directly to the corresponding struct in
+// hyperelasticity.jl
+template <int dim> struct MaterialState {
+  std::array<double, dim * dim> cauchy;
 };
 
 // QuadraturePointData
-template <int dim>
-struct QuadraturePointData {
+template <int dim> struct QuadraturePointData {
   MaterialState<dim> prev_state;
   MaterialState<dim> new_state;
   double JxW;
@@ -131,18 +131,17 @@ HyperelasticitySim<dim>::HyperelasticitySim()
     : degree(1), fe(FE_Q<dim>(1), dim), dofs_per_cell(fe.dofs_per_cell),
       dof_handler(triangulation),
       timer(std::cout, TimerOutput::summary, TimerOutput::wall_times),
-      q_cell(2), n_q_points(q_cell.size()), time(1.0, 0.1)
-      {
-  jl_assemble = reinterpret_cast<jl_assemble_t>(jl_unbox_voidpointer(
-      jl_eval_string(
+      q_cell(2), n_q_points(q_cell.size()), time(1.0, 0.1) {
+  jl_assemble =
+      reinterpret_cast<jl_assemble_t>(jl_unbox_voidpointer(jl_eval_string(
           "@cfunction(do_assemble!, Cvoid, (Ptr{Cdouble}, Ptr{Cdouble}, "
           "Ptr{MaterialState}, MaterialState, Tensor{2, 3, Cdouble, 9}, "
           "Ptr{Vec{3, Cdouble}}, Ptr{Tensor{2, 3, Cdouble, 9}}, Cint, Cdouble, "
           "NeoHooke))")));
 
   jl_compute_mise = reinterpret_cast<jl_compute_mise_t>(jl_unbox_voidpointer(
-      jl_eval_string( "@cfunction(compute_mise, Cdouble, (MaterialState, ))")));
-      }
+      jl_eval_string("@cfunction(compute_mise, Cdouble, (MaterialState, ))")));
+}
 
 template <int dim> HyperelasticitySim<dim>::~HyperelasticitySim() {
   dof_handler.clear();
@@ -235,7 +234,8 @@ template <int dim> void HyperelasticitySim<dim>::output_results() {
     double weighted_stress = 0.0;
     double volume = 0.0;
     for (unsigned int q = 0; q < n_q_points; ++q) {
-      auto& data = reinterpret_cast<QuadraturePointData<dim> *>(cell->user_pointer())[q];
+      auto &data =
+          reinterpret_cast<QuadraturePointData<dim> *>(cell->user_pointer())[q];
       auto m = jl_compute_mise(data.prev_state);
       weighted_stress += m * data.JxW;
       volume += data.JxW;
@@ -455,12 +455,13 @@ void HyperelasticitySim<dim>::assemble_system(
       auto dΩ = fe_values.JxW(q_point);
       {
         timer.enter_subsection("Compute jl");
-        auto& data = reinterpret_cast<QuadraturePointData<dim> *>(
+        auto &data = reinterpret_cast<QuadraturePointData<dim> *>(
             cell->user_pointer())[q_point];
         data.JxW = dΩ;
-        jl_assemble(cell_rhs_raw.data(), cell_matrix_raw.data(), &(data.new_state), data.prev_state,
-                   convert_tensor_to_array(grad_u_q), δui_jl.data(),
-                   grad_δui_jl.data(), dofs_per_cell, dΩ, mp);
+        jl_assemble(cell_rhs_raw.data(), cell_matrix_raw.data(),
+                    &(data.new_state), data.prev_state,
+                    convert_tensor_to_array(grad_u_q), δui_jl.data(),
+                    grad_δui_jl.data(), dofs_per_cell, dΩ, mp);
         timer.leave_subsection();
       };
     }
@@ -513,28 +514,26 @@ template <int dim> void HyperelasticitySim<dim>::setup_quadrature_point_data() {
           << std::flush;
 }
 
-template <int dim> void HyperelasticitySim<dim>::update_quadrature_point_data() {
-    for (auto& data : quadrature_point_data){
-        std::swap(data.prev_state, data.new_state);
-    }
+template <int dim>
+void HyperelasticitySim<dim>::update_quadrature_point_data() {
+  for (auto &data : quadrature_point_data) {
+    std::swap(data.prev_state, data.new_state);
+  }
 }
 
 } // namespace HyperelasticityNS
 
-jl_value_t *checked_eval_string(const char* code)
-{
-    jl_value_t *result = jl_eval_string(code);
-    if (jl_exception_occurred()) {
-        // none of these allocate, so a gc-root (JL_GC_PUSH) is not necessary
-        jl_call2(jl_get_function(jl_base_module, "showerror"),
-                 jl_stderr_obj(),
-                 jl_exception_occurred());
-        jl_printf(jl_stderr_stream(), "\n");
-        jl_atexit_hook(1);
-        exit(1);
-    }
-    assert(result && "Missing return value but no exception occurred!");
-    return result;
+jl_value_t *checked_eval_string(const char *code) {
+  jl_value_t *result = jl_eval_string(code);
+  if (jl_exception_occurred()) {
+    jl_call2(jl_get_function(jl_base_module, "showerror"), jl_stderr_obj(),
+             jl_exception_occurred());
+    jl_printf(jl_stderr_stream(), "\n");
+    jl_atexit_hook(1);
+    exit(1);
+  }
+  assert(result && "Missing return value but no exception occurred!");
+  return result;
 }
 
 int main() {
