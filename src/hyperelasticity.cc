@@ -169,7 +169,6 @@ template <int dim> void HyperelasticitySim<dim>::run() {
     update_quadrature_point_data();
     output_results();
     time.increment();
-    break;
   }
 }
 
