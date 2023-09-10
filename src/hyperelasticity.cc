@@ -133,14 +133,14 @@ HyperelasticitySim<dim>::HyperelasticitySim()
       timer(std::cout, TimerOutput::summary, TimerOutput::wall_times),
       q_cell(2), n_q_points(q_cell.size()), time(1.0, 0.1)
       {
-  compute_jl = reinterpret_cast<FuncType>(jl_unbox_voidpointer(
+  jl_assemble = reinterpret_cast<jl_assemble_t>(jl_unbox_voidpointer(
       jl_eval_string(
           "@cfunction(do_assemble!, Cvoid, (Ptr{Cdouble}, Ptr{Cdouble}, "
           "Ptr{MaterialState}, MaterialState, Tensor{2, 3, Cdouble, 9}, "
           "Ptr{Vec{3, Cdouble}}, Ptr{Tensor{2, 3, Cdouble, 9}}, Cint, Cdouble, "
           "NeoHooke))")));
 
-  compute_mise = reinterpret_cast<FuncType2>(jl_unbox_voidpointer(
+  jl_compute_mise = reinterpret_cast<jl_compute_mise_t>(jl_unbox_voidpointer(
       jl_eval_string( "@cfunction(compute_mise, Cdouble, (MaterialState, ))")));
       }
 
@@ -165,8 +165,9 @@ template <int dim> void HyperelasticitySim<dim>::run() {
   while (time.current() < time.end()) {
     solution_delta = 0.0;
     solve_nonlinear_timestep(solution_delta);
-    // Acumulate increment to total solution
+    // Accumulate increment to total solution
     solution_n += solution_delta;
+    update_quadrature_point_data();
     output_results();
     time.increment();
     break;
@@ -235,7 +236,7 @@ template <int dim> void HyperelasticitySim<dim>::output_results() {
     double volume = 0.0;
     for (unsigned int q = 0; q < n_q_points; ++q) {
       auto& data = reinterpret_cast<QuadraturePointData<dim> *>(cell->user_pointer())[q];
-      auto m = compute_mise(data.new_state);
+      auto m = jl_compute_mise(data.prev_state);
       weighted_stress += m * data.JxW;
       volume += data.JxW;
     }
@@ -457,7 +458,7 @@ void HyperelasticitySim<dim>::assemble_system(
         auto& data = reinterpret_cast<QuadraturePointData<dim> *>(
             cell->user_pointer())[q_point];
         data.JxW = dΩ;
-        compute_jl(cell_rhs_raw.data(), cell_matrix_raw.data(), &(data.new_state), data.prev_state,
+        jl_assemble(cell_rhs_raw.data(), cell_matrix_raw.data(), &(data.new_state), data.prev_state,
                    convert_tensor_to_array(grad_u_q), δui_jl.data(),
                    grad_δui_jl.data(), dofs_per_cell, dΩ, mp);
         timer.leave_subsection();
@@ -510,6 +511,12 @@ template <int dim> void HyperelasticitySim<dim>::setup_quadrature_point_data() {
   deallog << "Set up a total of " << qp_index << " qphs on "
           << triangulation.n_active_cells() << " cells" << std::endl
           << std::flush;
+}
+
+template <int dim> void HyperelasticitySim<dim>::update_quadrature_point_data() {
+    for (auto& data : quadrature_point_data){
+        std::swap(data.prev_state, data.new_state);
+    }
 }
 
 } // namespace HyperelasticityNS
