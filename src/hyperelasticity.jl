@@ -32,7 +32,6 @@ end;
 
 function compute_mise(m::Ptr{Float64}, state::MaterialState)
     r = √(3/2 * dev(state.σ) ⊡ dev(state.σ))
-    println("Mise in Julia: $(r)")
     unsafe_store!(m, r)
     return nothing
 end

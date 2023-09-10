@@ -234,10 +234,9 @@ template <int dim> void HyperelasticitySim<dim>::output_results() {
     double weighted_stress = 0.0;
     double volume = 0.0;
     for (unsigned int q = 0; q < n_q_points; ++q) {
-      auto data = reinterpret_cast<QuadraturePointData<dim> *>(cell->user_pointer())[q];
+      auto& data = reinterpret_cast<QuadraturePointData<dim> *>(cell->user_pointer())[q];
       double m = 0;
       compute_mise(&m, data.new_state);
-      std::cout << "Mise in C++ :" << data.JxW << std::endl;
       weighted_stress += m * data.JxW;
       volume += data.JxW;
     }
@@ -456,21 +455,12 @@ void HyperelasticitySim<dim>::assemble_system(
       auto dΩ = fe_values.JxW(q_point);
       {
         timer.enter_subsection("Compute jl");
-        auto data = reinterpret_cast<QuadraturePointData<dim> *>(
+        auto& data = reinterpret_cast<QuadraturePointData<dim> *>(
             cell->user_pointer())[q_point];
         data.JxW = dΩ;
-        std::cout << "Weight: " << data.JxW << std::endl;
         compute_jl(cell_rhs_raw.data(), cell_matrix_raw.data(), &(data.new_state), data.prev_state,
                    convert_tensor_to_array(grad_u_q), δui_jl.data(),
                    grad_δui_jl.data(), dofs_per_cell, dΩ, mp);
-        auto data2 = reinterpret_cast<QuadraturePointData<dim> *>(
-            cell->user_pointer())[q_point];
-        std::cout << "Weight 2: " << data2.JxW << std::endl;
-
-
-        /* reinterpret_cast<QuadraturePointData
-         * *>(cell->user_pointer())[q_point].mise = vonMise; */
-        /* std::cout << "von Mise in C++: " << vonMise << std::endl; */
         timer.leave_subsection();
       };
     }
