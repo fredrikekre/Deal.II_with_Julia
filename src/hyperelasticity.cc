@@ -87,12 +87,12 @@ public:
 
   double get_time() const;
 
-  virtual void vector_value(const Point<dim> &p,
-                            Vector<double> &values) const override;
+  virtual void vector_value(const Point<dim>& p,
+                            Vector<double>& values) const override;
 
   virtual void
-  vector_value_list(const std::vector<Point<dim>> &points,
-                    std::vector<Vector<double>> &value_list) const override;
+  vector_value_list(const std::vector<Point<dim>>& points,
+                    std::vector<Vector<double>>& value_list) const override;
 
 private:
   const double time;
@@ -105,8 +105,8 @@ BoundaryValues<dim>::BoundaryValues(const double time)
     : Function<dim>(dim), time(time) {}
 
 template <int dim>
-void BoundaryValues<dim>::vector_value(const Point<dim> &p,
-                                       Vector<double> &values) const {
+void BoundaryValues<dim>::vector_value(const Point<dim>& p,
+                                       Vector<double>& values) const {
   auto t = get_time();
   values(0) = 0.01 * (p(1) + p(2));
   values(1) = 0.01 * (p(2) + p(0));
@@ -117,8 +117,8 @@ void BoundaryValues<dim>::vector_value(const Point<dim> &p,
 
 template <int dim>
 void BoundaryValues<dim>::vector_value_list(
-    const std::vector<Point<dim>> &points,
-    std::vector<Vector<double>> &value_list) const {
+    const std::vector<Point<dim>>& points,
+    std::vector<Vector<double>>& value_list) const {
   const unsigned int n_points = points.size();
   Assert(value_list.size() == n_points,
          ExcDimensionMismatch(value_list.size(), n_points));
@@ -229,12 +229,12 @@ template <int dim> void HyperelasticitySim<dim>::output_results() {
   Vector<double> stress_out(triangulation.n_active_cells());
 
   unsigned int index = 0;
-  for (const auto &cell : triangulation.active_cell_iterators()) {
+  for (const auto& cell : triangulation.active_cell_iterators()) {
     double weighted_stress = 0.0;
     double volume = 0.0;
     for (unsigned int q = 0; q < n_q_points; ++q) {
-      auto &data =
-          reinterpret_cast<QuadraturePointData<dim> *>(cell->user_pointer())[q];
+      auto& data =
+          reinterpret_cast<QuadraturePointData<dim>*>(cell->user_pointer())[q];
       auto m = jl_compute_mise(data.prev_state);
       weighted_stress += m * data.JxW;
       volume += data.JxW;
@@ -262,7 +262,7 @@ template <int dim> void HyperelasticitySim<dim>::get_error_residual() {
 
 template <int dim>
 void HyperelasticitySim<dim>::get_error_update(
-    const Vector<double> &newton_update) {
+    const Vector<double>& newton_update) {
   Vector<double> error_ud(dof_handler.n_dofs());
   for (unsigned int i = 0; i < dof_handler.n_dofs(); ++i)
     if (!dirichlet_constraints.is_constrained(i))
@@ -274,7 +274,7 @@ void HyperelasticitySim<dim>::get_error_update(
 
 template <int dim>
 Vector<double> HyperelasticitySim<dim>::get_total_solution(
-    const Vector<double> &solution_delta) const {
+    const Vector<double>& solution_delta) const {
   Vector<double> solution_total(solution_n);
   solution_total += solution_delta;
   return solution_total;
@@ -288,7 +288,7 @@ Vector<double> HyperelasticitySim<dim>::get_total_solution(
 
 template <int dim>
 void HyperelasticitySim<dim>::solve_nonlinear_timestep(
-    Vector<double> &solution_delta) {
+    Vector<double>& solution_delta) {
   std::cout << std::endl
             << "Timestep " << time.get_timestep() << " @ " << time.current()
             << "s" << std::endl;
@@ -353,7 +353,7 @@ void HyperelasticitySim<dim>::solve_nonlinear_timestep(
 
 template <int dim>
 std::pair<unsigned int, double>
-HyperelasticitySim<dim>::solve_linear_system(Vector<double> &newton_update) {
+HyperelasticitySim<dim>::solve_linear_system(Vector<double>& newton_update) {
   timer.enter_subsection("Solving linear system");
   std::cout << " SLV " << std::flush;
   unsigned int lin_it = 0;
@@ -396,7 +396,7 @@ template <int dim> void HyperelasticitySim<dim>::print_conv_footer() {
 
 template <int dim>
 void HyperelasticitySim<dim>::assemble_system(
-    const Vector<double> &solution_delta) {
+    const Vector<double>& solution_delta) {
   timer.enter_subsection("Assembling");
   std::cout << " ASM " << std::flush;
 
@@ -429,7 +429,7 @@ void HyperelasticitySim<dim>::assemble_system(
   std::vector<Tensor<2, dim>> grad_u(n_q_points);
   timer.leave_subsection();
 
-  for (const auto &cell : dof_handler.active_cell_iterators()) {
+  for (const auto& cell : dof_handler.active_cell_iterators()) {
     timer.enter_subsection("Loop cells");
 
     cell_matrix = 0;
@@ -452,7 +452,7 @@ void HyperelasticitySim<dim>::assemble_system(
       auto dΩ = fe_values.JxW(q_point);
       {
         timer.enter_subsection("Compute jl");
-        auto &data = reinterpret_cast<QuadraturePointData<dim> *>(
+        auto& data = reinterpret_cast<QuadraturePointData<dim>*>(
             cell->user_pointer())[q_point];
         data.JxW = dΩ;
         jl_assemble(cell_rhs_raw.data(), cell_matrix_raw.data(),
@@ -513,15 +513,15 @@ template <int dim> void HyperelasticitySim<dim>::setup_quadrature_point_data() {
 
 template <int dim>
 void HyperelasticitySim<dim>::update_quadrature_point_data() {
-  for (auto &data : quadrature_point_data) {
+  for (auto& data : quadrature_point_data) {
     std::swap(data.prev_state, data.new_state);
   }
 }
 
 } // namespace HyperelasticityNS
 
-jl_value_t *checked_eval_string(const char *code) {
-  jl_value_t *result = jl_eval_string(code);
+jl_value_t* checked_eval_string(const char* code) {
+  jl_value_t* result = jl_eval_string(code);
   if (jl_exception_occurred()) {
     jl_call2(jl_get_function(jl_base_module, "showerror"), jl_stderr_obj(),
              jl_exception_occurred());
@@ -553,7 +553,7 @@ int main() {
     // Run the simulation
     HyperelasticitySim<3> sim;
     sim.run();
-  } catch (std::exception &exc) {
+  } catch (std::exception& exc) {
     std::cerr << std::endl
               << std::endl
               << "----------------------------------------------------"
