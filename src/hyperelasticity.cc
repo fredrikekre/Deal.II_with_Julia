@@ -141,7 +141,7 @@ HyperelasticitySim<dim>::HyperelasticitySim()
           "NeoHooke))")));
 
   compute_mise = reinterpret_cast<FuncType2>(jl_unbox_voidpointer(
-      jl_eval_string( "@cfunction(compute_mise, Cvoid, (Ptr{Cdouble}, MaterialState,))")));
+      jl_eval_string( "@cfunction(compute_mise, Cdouble, (MaterialState, ))")));
       }
 
 template <int dim> HyperelasticitySim<dim>::~HyperelasticitySim() {
@@ -235,8 +235,7 @@ template <int dim> void HyperelasticitySim<dim>::output_results() {
     double volume = 0.0;
     for (unsigned int q = 0; q < n_q_points; ++q) {
       auto& data = reinterpret_cast<QuadraturePointData<dim> *>(cell->user_pointer())[q];
-      double m = 0;
-      compute_mise(&m, data.new_state);
+      auto m = compute_mise(data.new_state);
       weighted_stress += m * data.JxW;
       volume += data.JxW;
     }

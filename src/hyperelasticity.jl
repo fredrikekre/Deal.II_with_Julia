@@ -30,10 +30,9 @@ function constitutive_driver(F, mp::NeoHooke)
     return P, ∂P∂F
 end;
 
-function compute_mise(m::Ptr{Float64}, state::MaterialState)
+function compute_mise(state::MaterialState)
     r = √(3/2 * dev(state.σ) ⊡ dev(state.σ))
-    unsafe_store!(m, r)
-    return nothing
+    return r
 end
 
 

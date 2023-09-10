@@ -35,7 +35,7 @@ public:
   using FuncType = void(*)(double*, double*, MaterialState<dim>*, MaterialState<dim>,
           std::array<double, dim*dim>, std::array<double, dim>*, std::array<double, dim*dim>*, int, double, NeoHooke);
 
-  using FuncType2 = void(*)(double*, MaterialState<dim>);
+  using FuncType2 = double(*)(MaterialState<dim>);
 
   explicit HyperelasticitySim();
   virtual ~HyperelasticitySim();
