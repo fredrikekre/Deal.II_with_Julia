@@ -1,3 +1,8 @@
+/*
+ * MIT License
+ * Copyright (c) 2023 Kristoffer Carlsson, Fredrik Ekre
+ */
+
 #pragma once
 
 class Time {

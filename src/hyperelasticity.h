@@ -1,8 +1,12 @@
+/*
+ * MIT License
+ * Copyright (c) 2023 Kristoffer Carlsson, Fredrik Ekre
+ */
+
 #pragma once
 
 #include "Time.h"
 
-/* #include <deal.II/base/parameter_handler.h> */
 #include <deal.II/base/timer.h>
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/fe/fe_system.h>
