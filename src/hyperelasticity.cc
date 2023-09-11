@@ -41,20 +41,26 @@
 
 namespace HyperelasticityNS {
 
-// Material parameters. Must map directly to the corresponding struct in
-// hyperelasticity.jl
+// Material parameters.
+// Maps directly to the corresponding struct in hyperelasticity.jl.
 struct NeoHooke {
   double mu;
   double lambda;
 };
 
-// Material state. Must map directly to the corresponding struct in
-// hyperelasticity.jl
+// Material state.
+// Maps directly to the corresponding struct in hyperelasticity.jl. This struct
+// is allocated on the C side, but only used on the Julia side so the stress is
+// stored as an std::array<T, N> (aka Tensor{2} in Julia) and not a
+// dealii:Tensor.
 template <int dim> struct MaterialState {
   std::array<double, dim * dim> cauchy;
 };
 
-// QuadraturePointData
+// Quadrature point data.
+// Stores the previous (from the last converged timestep) and new material
+// state, together with the integration weight for computing the cell-wise
+// averaged von Mise stress in postprocessing.
 template <int dim> struct QuadraturePointData {
   MaterialState<dim> prev_state;
   MaterialState<dim> new_state;

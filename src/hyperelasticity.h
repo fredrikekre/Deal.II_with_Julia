@@ -23,8 +23,11 @@
 
 namespace HyperelasticityNS {
 
+// Material parameters
 struct NeoHooke;
+// Material state (e.g. plastic strain, ...)
 template <int dim> struct MaterialState;
+// Quadrature point data with e.g. previous and new material state
 template <int dim> struct QuadraturePointData;
 
 template <int dim> class HyperelasticitySim {
