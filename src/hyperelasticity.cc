@@ -69,6 +69,7 @@ template <int dim> struct QuadraturePointData {
   double JxW;
 };
 
+// dealii::Tensor<1, dim> to std::array<T, dim> conversion
 template <int dim>
 std::array<double, dim> convert_tensor_to_array(dealii::Tensor<1, dim> t) {
   std::array<double, dim> a;
@@ -77,11 +78,13 @@ std::array<double, dim> convert_tensor_to_array(dealii::Tensor<1, dim> t) {
   return a;
 }
 
+// dealii::Tensor<2, dim> to std::array<T, dim * dim> conversion
 template <int dim>
 std::array<double, dim * dim>
 convert_tensor_to_array(dealii::Tensor<2, dim> t) {
   std::array<double, dim * dim> a;
-  // Note: Tensors.jl's Tensor type is column major
+  // Note: Tensors.jl's Tensor type is column major so the row-loop is the
+  // innermost loop
   int i = 0;
   for (int col = 0; col < dim; ++col) {
     for (int row = 0; row < dim; ++row)
