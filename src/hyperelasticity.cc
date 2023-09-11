@@ -41,6 +41,8 @@
 
 namespace HyperelasticityNS {
 
+using namespace dealii;
+
 // Material parameters.
 // Maps directly to the corresponding struct in hyperelasticity.jl.
 struct NeoHooke {
@@ -67,8 +69,6 @@ template <int dim> struct QuadraturePointData {
   double JxW;
 };
 
-using namespace dealii;
-
 template <int dim>
 std::array<double, dim> convert_tensor_to_array(dealii::Tensor<1, dim> a) {
   std::array<double, dim> tmp;
@@ -78,12 +78,12 @@ std::array<double, dim> convert_tensor_to_array(dealii::Tensor<1, dim> a) {
 }
 
 std::array<double, 4> convert_tensor_to_array(dealii::Tensor<2, 2> a) {
-  return std::array<double, 4>{{a[0][0], a[0][1], a[1][0], a[1][1]}};
+  return std::array<double, 4>{{a[0][0], a[1][0], a[0][1], a[1][1]}};
 }
 
 std::array<double, 9> convert_tensor_to_array(dealii::Tensor<2, 3> a) {
-  return std::array<double, 9>{{a[0][0], a[0][1], a[0][2], a[1][0], a[1][1],
-                                a[1][2], a[2][0], a[2][1], a[2][2]}};
+  return std::array<double, 9>{{a[0][0], a[1][0], a[2][0], a[0][1], a[1][1],
+                                a[2][1], a[0][2], a[1][2], a[2][2]}};
 }
 
 // Boundary values
