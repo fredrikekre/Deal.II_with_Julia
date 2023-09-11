@@ -86,10 +86,9 @@ convert_tensor_to_array(dealii::Tensor<2, dim> t) {
   // Note: Tensors.jl's Tensor type is column major so the row-loop is the
   // innermost loop
   int i = 0;
-  for (int col = 0; col < dim; ++col) {
+  for (int col = 0; col < dim; ++col)
     for (int row = 0; row < dim; ++row)
       a[i++] = t[row][col];
-  }
   return a;
 }
 
@@ -481,11 +480,9 @@ void HyperelasticitySim<dim>::assemble_system(
       cell_rhs[i] = cell_rhs_raw[i];
 
     int m = 0;
-    for (unsigned int i = 0; i < dofs_per_cell; ++i)
-      for (unsigned int j = 0; j < dofs_per_cell; ++j) {
-        cell_matrix[i][j] = cell_matrix_raw[m];
-        m++;
-      }
+    for (unsigned int col = 0; col < dofs_per_cell; ++col)
+      for (unsigned int row = 0; row < dofs_per_cell; ++row)
+        cell_matrix[row][col] = cell_matrix_raw[m++];
 
     cell->get_dof_indices(local_dof_indices);
     newton_constraints.distribute_local_to_global(
