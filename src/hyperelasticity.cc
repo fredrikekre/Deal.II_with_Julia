@@ -1,6 +1,7 @@
 // MIT License
 // Copyright (c) 2023 Kristoffer Carlsson, Fredrik Ekre
 
+#include <cmath>
 #include <fstream>
 #include <iostream>
 #include <vector>
@@ -20,7 +21,6 @@
 #include <deal.II/fe/fe_values.h>
 #include <deal.II/grid/grid_generator.h>
 #include <deal.II/grid/grid_out.h>
-#include <deal.II/grid/grid_tools.h>
 #include <deal.II/grid/manifold_lib.h>
 #include <deal.II/grid/tria_accessor.h>
 #include <deal.II/grid/tria_iterator.h>
@@ -120,10 +120,14 @@ template <int dim>
 void BoundaryValues<dim>::vector_value(const Point<dim>& p,
                                        Vector<double>& values) const {
   auto t = get_time();
-  values(0) = 0.01 * (p(1) + p(2));
-  values(1) = 0.01 * (p(2) + p(0));
-  if (dim == 3)
-    values(2) = 0.01 * (p(0) + p(1));
+  double L = 1.0;
+  double y = p(1);
+  double z = p(2);
+  double theta = M_PI / 3; // Rotation angle (60 degrees)
+
+  values(0) = 0.0;
+  values(1) = L / 2 - y + (y - L / 2) * cos(theta) - (z - L / 2) * sin(theta);
+  values(2) = L / 2 - z + (y - L / 2) * sin(theta) + (z - L / 2) * cos(theta);
   values *= t;
 }
 
@@ -186,10 +190,7 @@ template <int dim> void HyperelasticitySim<dim>::run() {
 
 template <int dim> void HyperelasticitySim<dim>::make_grid() {
   deallog << "Creating mesh" << std::endl << std::flush;
-
-  GridGenerator::hyper_cube(triangulation, 0.0, 1.0);
-
-  GridTools::scale(1.0, triangulation);
+  GridGenerator::hyper_cube(triangulation, 0.0, 1.0, true);
   triangulation.refine_global(3);
 }
 
@@ -214,6 +215,8 @@ template <int dim> void HyperelasticitySim<dim>::system_setup() {
   DoFTools::make_hanging_node_constraints(dof_handler, newton_constraints);
   VectorTools::interpolate_boundary_values(
       dof_handler, 0, Functions::ZeroFunction<dim>(dim), newton_constraints);
+  VectorTools::interpolate_boundary_values(
+      dof_handler, 1, Functions::ZeroFunction<dim>(dim), newton_constraints);
   newton_constraints.close();
 
   tangent_matrix.clear();
@@ -496,7 +499,11 @@ template <int dim> void HyperelasticitySim<dim>::make_dirichlet_constraints() {
   std::cout << " CST " << std::endl << std::flush;
   dirichlet_constraints.clear();
   DoFTools::make_hanging_node_constraints(dof_handler, dirichlet_constraints);
-  VectorTools::interpolate_boundary_values(dof_handler, 0,
+  // Fix the surface with normal in negative x-direction
+  VectorTools::interpolate_boundary_values(
+      dof_handler, 0, Functions::ZeroFunction<dim>(dim), dirichlet_constraints);
+  // Rotate the surface with normal in positive x-direction
+  VectorTools::interpolate_boundary_values(dof_handler, 1,
                                            BoundaryValues<dim>(time.current()),
                                            dirichlet_constraints);
   dirichlet_constraints.close();
