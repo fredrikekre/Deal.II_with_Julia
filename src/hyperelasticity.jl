@@ -17,17 +17,10 @@ function Ψ(C, mp::NeoHooke)
     return μ / 2 * (Ic - 3) - μ * log(J) + λ / 2 * log(J)^2
 end
 
-function constitutive_driver(F, mp::NeoHooke)
-    C = tdot(F) # F' ⋅ F
+function constitutive_driver(C, mp::NeoHooke)
     ∂²Ψ∂C², ∂Ψ∂C = Tensors.hessian(y -> Ψ(y, mp), C, :all)
     S = 2.0 * ∂Ψ∂C
     ∂S∂C = 2.0 * ∂²Ψ∂C²
-
-    # P = F ⋅ S
-    # I = one(S)
-    # ∂P∂F = otimesu(I, S) + 2 * otimesu(F, I) ⊡ ∂S∂C ⊡ otimesu(F', I)
-    # return P, ∂P∂F
-
     return S, ∂S∂C
 end
 
