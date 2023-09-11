@@ -93,9 +93,9 @@ convert_tensor_to_array(dealii::Tensor<2, dim> t) {
 }
 
 // Boundary values
-template <int dim> class BoundaryValues : public Function<dim> {
+template <int dim> class Rotation : public Function<dim> {
 public:
-  BoundaryValues(const double time = 0.);
+  Rotation(const double time = 0.);
 
   double get_time() const;
 
@@ -110,15 +110,14 @@ private:
   const double time;
 };
 
-template <int dim> double BoundaryValues<dim>::get_time() const { return time; }
+template <int dim> double Rotation<dim>::get_time() const { return time; }
 
 template <int dim>
-BoundaryValues<dim>::BoundaryValues(const double time)
-    : Function<dim>(dim), time(time) {}
+Rotation<dim>::Rotation(const double time) : Function<dim>(dim), time(time) {}
 
 template <int dim>
-void BoundaryValues<dim>::vector_value(const Point<dim>& p,
-                                       Vector<double>& values) const {
+void Rotation<dim>::vector_value(const Point<dim>& p,
+                                 Vector<double>& values) const {
   auto t = get_time();
   double L = 1.0;
   double y = p(1);
@@ -132,14 +131,14 @@ void BoundaryValues<dim>::vector_value(const Point<dim>& p,
 }
 
 template <int dim>
-void BoundaryValues<dim>::vector_value_list(
+void Rotation<dim>::vector_value_list(
     const std::vector<Point<dim>>& points,
     std::vector<Vector<double>>& value_list) const {
   const unsigned int n_points = points.size();
   Assert(value_list.size() == n_points,
          ExcDimensionMismatch(value_list.size(), n_points));
   for (unsigned int p = 0; p < n_points; ++p)
-    BoundaryValues<dim>::vector_value(points[p], value_list[p]);
+    Rotation<dim>::vector_value(points[p], value_list[p]);
 }
 
 template <int dim>
@@ -503,9 +502,8 @@ template <int dim> void HyperelasticitySim<dim>::make_dirichlet_constraints() {
   VectorTools::interpolate_boundary_values(
       dof_handler, 0, Functions::ZeroFunction<dim>(dim), dirichlet_constraints);
   // Rotate the surface with normal in positive x-direction
-  VectorTools::interpolate_boundary_values(dof_handler, 1,
-                                           BoundaryValues<dim>(time.current()),
-                                           dirichlet_constraints);
+  VectorTools::interpolate_boundary_values(
+      dof_handler, 1, Rotation<dim>(time.current()), dirichlet_constraints);
   dirichlet_constraints.close();
 }
 
