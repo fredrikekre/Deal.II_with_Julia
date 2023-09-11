@@ -22,13 +22,8 @@ function constitutive_driver(F, mp::NeoHooke)
     ∂²Ψ∂C², ∂Ψ∂C = Tensors.hessian(y -> Ψ(y, mp), C, :all)
     S = 2.0 * ∂Ψ∂C
     ∂S∂C = 2.0 * ∂²Ψ∂C²
-
-    P = F ⋅ S
-    I = one(S)
-    ∂P∂F =  otimesu(I, S) + 2 * otimesu(F, I) ⊡ ∂S∂C ⊡ otimesu(F', I)
-
-    return P, ∂P∂F
-end;
+    return S, ∂S∂C
+end
 
 function compute_mise(state::MaterialState)
     r = √(3/2 * dev(state.σ) ⊡ dev(state.σ))
@@ -48,6 +43,8 @@ function do_assemble!(
 
     # Compute stress and tangent
     S, ∂S∂C = constitutive_driver(C, mp)
+
+    # Convert to first Piola-Kirchoff stress
     P = F ⋅ S
     I = one(S)
     ∂P∂F = otimesu(I, S) + 2 * otimesu(F, I) ⊡ ∂S∂C ⊡ otimesu(F', I)
@@ -60,11 +57,10 @@ function do_assemble!(
         # Add contribution to the residual from this test function
         ge[i] += ( ∇δui ⊡ P #=- δui ⋅ b =# ) * dΩ
 
-        ∇δui∂P∂F = ∇δui ⊡ ∂P∂F # Hoisted computation
         for j in 1:ndofs
             ∇δuj = ∇δuis[j]
             # Add contribution to the tangent
-            ke[i, j] += ( ∇δui∂P∂F ⊡ ∇δuj ) * dΩ
+            ke[i, j] += ( ∇δui ⊡ ∂P∂F ⊡ ∇δuj ) * dΩ
         end
     end
 
