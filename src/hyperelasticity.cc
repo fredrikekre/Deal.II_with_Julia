@@ -70,20 +70,24 @@ template <int dim> struct QuadraturePointData {
 };
 
 template <int dim>
-std::array<double, dim> convert_tensor_to_array(dealii::Tensor<1, dim> a) {
-  std::array<double, dim> tmp;
+std::array<double, dim> convert_tensor_to_array(dealii::Tensor<1, dim> t) {
+  std::array<double, dim> a;
   for (int i = 0; i < dim; ++i)
-    tmp[i] = a[i];
-  return tmp;
+    a[i] = t[i];
+  return a;
 }
 
-std::array<double, 4> convert_tensor_to_array(dealii::Tensor<2, 2> a) {
-  return std::array<double, 4>{{a[0][0], a[1][0], a[0][1], a[1][1]}};
-}
-
-std::array<double, 9> convert_tensor_to_array(dealii::Tensor<2, 3> a) {
-  return std::array<double, 9>{{a[0][0], a[1][0], a[2][0], a[0][1], a[1][1],
-                                a[2][1], a[0][2], a[1][2], a[2][2]}};
+template <int dim>
+std::array<double, dim * dim>
+convert_tensor_to_array(dealii::Tensor<2, dim> t) {
+  std::array<double, dim * dim> a;
+  // Note: Tensors.jl's Tensor type is column major
+  int i = 0;
+  for (int col = 0; col < dim; ++col) {
+    for (int row = 0; row < dim; ++row)
+      a[i++] = t[row][col];
+  }
+  return a;
 }
 
 // Boundary values
