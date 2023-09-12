@@ -28,6 +28,9 @@
 #include <deal.II/lac/dynamic_sparsity_pattern.h>
 #include <deal.II/lac/sparse_direct.h>
 #include <deal.II/lac/sparse_matrix.h>
+#include <deal.II/lac/precondition.h>
+#include <deal.II/lac/solver_cg.h>
+#include <deal.II/lac/precondition_selector.h>
 #include <deal.II/lac/vector.h>
 #include <deal.II/numerics/data_out.h>
 #include <deal.II/numerics/matrix_tools.h>
@@ -368,9 +371,29 @@ void HyperelasticitySim<dim>::solve_linear_system(Vector<double>& newton_update)
   TimerOutput::Scope timer_section(timer, "Solving linear system");
   std::cout << " SLV " << std::flush;
 
-  SparseDirectUMFPACK A_direct;
-  A_direct.initialize(tangent_matrix);
-  A_direct.vmult(newton_update, system_rhs);
+  auto use_iterative_solver = true;
+
+  if (use_iterative_solver) {
+    auto max_iters = 100;
+    auto preconditioner_type = "ssor";
+    auto precoditioner_relaxation = 0.65;
+    auto tol_lin = 1e-6;
+
+    const int solver_its = tangent_matrix.m() * max_iters;
+    const double tol_sol = tol_lin * system_rhs.l2_norm();
+    SolverControl solver_control(solver_its, tol_sol);
+    PreconditionSelector<SparseMatrix<double>, Vector<double>> preconditioner(
+        preconditioner_type, precoditioner_relaxation);
+    preconditioner.use_matrix(tangent_matrix);
+    SolverCG<Vector<double>> solver_CG(solver_control);
+    solver_CG.solve(tangent_matrix, newton_update, system_rhs, preconditioner);
+    lin_it = solver_control.last_step();
+    lin_res = solver_control.last_value();
+  } else {
+    SparseDirectUMFPACK A_direct;
+    A_direct.initialize(tangent_matrix);
+    A_direct.vmult(newton_update, system_rhs);
+  }
 
   newton_constraints.distribute(newton_update);
   return;
