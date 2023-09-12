@@ -347,17 +347,15 @@ void HyperelasticitySim<dim>::solve_nonlinear_timestep(
       break;
     }
 
-    const std::pair<unsigned int, double> lin_solver_output =
-        solve_linear_system(newton_update);
+    solve_linear_system(newton_update);
     get_error_update(newton_update);
     if (newton_iteration == 1)
       error_update_0 = error_update;
     error_update_norm = error_update;
     error_update_norm.normalise(error_update_0);
     solution_delta -= newton_update;
-    std::cout << " | " << std::fixed << std::setprecision(3) << std::setw(7)
-              << std::scientific << lin_solver_output.first << "  "
-              << lin_solver_output.second << "  " << error_residual_norm.norm
+    std::cout << " | " << std::fixed << std::setprecision(3)
+              << std::scientific << " " << error_residual_norm.norm
               << "  " << error_residual_norm.u << "  " << error_update_norm.norm
               << "  " << error_update_norm.u << std::endl;
   }
@@ -366,38 +364,31 @@ void HyperelasticitySim<dim>::solve_nonlinear_timestep(
 }
 
 template <int dim>
-std::pair<unsigned int, double>
-HyperelasticitySim<dim>::solve_linear_system(Vector<double>& newton_update) {
-  timer.enter_subsection("Solving linear system");
+void HyperelasticitySim<dim>::solve_linear_system(Vector<double>& newton_update) {
+  TimerOutput::Scope timer_section(timer, "Solving linear system");
   std::cout << " SLV " << std::flush;
-  unsigned int lin_it = 0;
-  double lin_res = 0.0;
 
   SparseDirectUMFPACK A_direct;
   A_direct.initialize(tangent_matrix);
   A_direct.vmult(newton_update, system_rhs);
 
   newton_constraints.distribute(newton_update);
-  timer.leave_subsection();
-  return std::make_pair(lin_it, lin_res);
+  return;
 }
 
 template <int dim> void HyperelasticitySim<dim>::print_conv_header() {
-  static const unsigned int l_width = 100;
+  static const unsigned int l_width = 60;
   for (unsigned int i = 0; i < l_width; ++i)
     std::cout << "_";
   std::cout << std::endl;
-  std::cout << "  SOLVER STEP "
-            << " |  LIN_IT   LIN_RES    RES_NORM    "
-            << " RES_U  "
-            << "    NU_NORM     NU_U" << std::endl;
+  std::cout << "  SOLVER STEP  |  RES_NORM   RES_U      NU_NORM    NU_U" << std::endl;
   for (unsigned int i = 0; i < l_width; ++i)
     std::cout << "_";
   std::cout << std::endl;
 }
 
 template <int dim> void HyperelasticitySim<dim>::print_conv_footer() {
-  static const unsigned int l_width = 155;
+  static const unsigned int l_width = 60;
   for (unsigned int i = 0; i < l_width; ++i)
     std::cout << "_";
   std::cout << std::endl;
@@ -490,7 +481,6 @@ void HyperelasticitySim<dim>::assemble_system(
 }
 
 template <int dim> void HyperelasticitySim<dim>::make_dirichlet_constraints() {
-  std::cout << " CST " << std::endl << std::flush;
   dirichlet_constraints.clear();
   DoFTools::make_hanging_node_constraints(dof_handler, dirichlet_constraints);
   // Fix the surface with normal in negative x-direction

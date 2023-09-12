@@ -69,8 +69,7 @@ private:
   void system_setup();
   void make_dirichlet_constraints();
   void solve_nonlinear_timestep(dealii::Vector<double>& solution_delta);
-  std::pair<unsigned int, double>
-  solve_linear_system(dealii::Vector<double>& newton_update);
+  void solve_linear_system(dealii::Vector<double>& newton_update);
   dealii::Vector<double>
   get_total_solution(const dealii::Vector<double>& solution_delta) const;
   void output_results();
