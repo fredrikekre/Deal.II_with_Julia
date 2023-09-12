@@ -1,14 +1,17 @@
 using Tensors
 
+# Material parameters
 struct NeoHooke
     μ::Float64 # double
     λ::Float64 # double
 end
 
+# Material state (not needed for this model but included as an example)
 struct MaterialState
     σ::Tensor{2, 3, Float64, 9} # std::array<double, 9>
 end
 
+# Potential energy density
 function Ψ(C, mp::NeoHooke)
     μ = mp.μ
     λ = mp.λ
@@ -17,22 +20,27 @@ function Ψ(C, mp::NeoHooke)
     return μ / 2 * (Ic - 3) - μ * log(J) + λ / 2 * log(J)^2
 end
 
+# Material routine: Strain in, stress and tangent out
 function constitutive_driver(C, mp::NeoHooke)
+    # Automatic differentiation to compute second and first derivative
     ∂²Ψ∂C², ∂Ψ∂C = Tensors.hessian(y -> Ψ(y, mp), C, :all)
-    S = 2.0 * ∂Ψ∂C
+    S = 2.0 * ∂Ψ∂C # Second Piola-Kirchoff stress
     ∂S∂C = 2.0 * ∂²Ψ∂C²
     return S, ∂S∂C
 end
 
+# Compute effective von Mise stress
 function compute_mise(state::MaterialState)
     r = √(3/2 * dev(state.σ) ⊡ dev(state.σ))
     return r
 end
 
+# Assembly routine compute the contribution to the local residual vector and
+# the local tangent matrix for one quadrature point
 function do_assemble!(
         ge::Vector{Float64}, ke::Matrix{Float64},
         new_state::Ptr{MaterialState}, prev_state::MaterialState,
-        ∇u::Tensor{2}, δuis::Vector{<:Vec}, ∇δuis::Vector{<:Tensor{2}},
+        ∇u::Tensor{2}, δu::Vector{<:Vec}, ∇δu::Vector{<:Tensor{2}},
         ndofs, dΩ::Float64, mp::NeoHooke
     )
 
@@ -50,16 +58,11 @@ function do_assemble!(
 
     # Loop over test functions
     for i in 1:ndofs
-        # Test function and gradient
-        δui = δuis[i]
-        ∇δui = ∇δuis[i]
-        # Add contribution to the residual from this test function
-        ge[i] += ( ∇δui ⊡ P #=- δui ⋅ b =# ) * dΩ
-
+        # Add contribution to the residual vector
+        ge[i] += ( ∇δu[i] ⊡ P #=- δu[i] ⋅ b =# ) * dΩ
         for j in 1:ndofs
-            ∇δuj = ∇δuis[j]
-            # Add contribution to the tangent
-            ke[i, j] += ( ∇δui ⊡ ∂P∂F ⊡ ∇δuj ) * dΩ
+            # Add contribution to the tangent matrix
+            ke[i, j] += ( ∇δu[i] ⊡ ∂P∂F ⊡ ∇δu[j] ) * dΩ
         end
     end
 
@@ -86,11 +89,10 @@ function do_assemble!(
 ) where {dim}
 
     # Note: Using the package UnsafeArrays.jl avoids the alloc and GC of the
-    #       Array metadata (the data will be shared regardless).
+    #       Array metadata (the data itself will be shared regardless).
     ge    = unsafe_wrap(Array, ge, ndofs)
     ke    = unsafe_wrap(Array, ke, (ndofs, ndofs))
     δuis  = unsafe_wrap(Array, δuis, ndofs)
     ∇δuis = unsafe_wrap(Array, ∇δuis, ndofs)
-
     do_assemble!(ge, ke, new_state, prev_state, ∇u, δuis, ∇δuis, ndofs, dΩ, mp)
 end
