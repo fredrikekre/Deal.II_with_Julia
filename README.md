@@ -11,13 +11,17 @@ Workshop, September 11-15, 2023, in Hannover.
 
 1. Install deal.II
 2. Install Julia and make sure it is available in `PATH`.
-3. Run `cmake` and `make`:
+3. Install the Julia package
+   [Tensors.jl](https://github.com/Ferrite-FEM/Tensors.jl):
+   ```
+   julia -e 'using Pkg; Pkg.add("Tensors")'
+   ```
+4. Run `cmake` and `make`:
    ```
    cmake -DDEAL_II_DIR=/path/to/deal.II .
    make
    ```
-4. Run the executable
-
+5. Run the executable
    ```
    ./hyperelasticity
    ```
