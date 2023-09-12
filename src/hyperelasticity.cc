@@ -411,10 +411,8 @@ template <int dim> void HyperelasticitySim<dim>::print_conv_footer() {
 template <int dim>
 void HyperelasticitySim<dim>::assemble_system(
     const Vector<double>& solution_delta) {
-  timer.enter_subsection("Assembling");
+  TimerOutput::Scope timer_section(timer, "Global assembly");
   std::cout << " ASM " << std::flush;
-
-  timer.enter_subsection("Preamble");
 
   FEValues<dim> fe_values(fe, q_cell,
                           update_values | update_gradients | update_JxW_values |
@@ -441,10 +439,9 @@ void HyperelasticitySim<dim>::assemble_system(
   std::vector<std::array<double, dim * dim>> grad_δui(dofs_per_cell);
 
   std::vector<Tensor<2, dim>> grad_u(n_q_points);
-  timer.leave_subsection();
 
   for (const auto& cell : dof_handler.active_cell_iterators()) {
-    timer.enter_subsection("Loop cells");
+    TimerOutput::Scope timer_section(timer, "Cell loop");
 
     cell_matrix = 0;
     cell_rhs = 0;
@@ -464,34 +461,32 @@ void HyperelasticitySim<dim>::assemble_system(
             fe_values[displacement].gradient(i, q_point));
       }
       auto dΩ = fe_values.JxW(q_point);
+      auto& data = reinterpret_cast<QuadraturePointData<dim>*>(
+          cell->user_pointer())[q_point];
+      data.JxW = dΩ;
       {
-        timer.enter_subsection("Compute jl");
-        auto& data = reinterpret_cast<QuadraturePointData<dim>*>(
-            cell->user_pointer())[q_point];
-        data.JxW = dΩ;
+        TimerOutput::Scope timer_section(timer, "Julia kernel");
         jl_assemble(cell_rhs_raw.data(), cell_matrix_raw.data(),
                     &(data.new_state), data.prev_state,
                     convert_tensor_to_array(grad_u_q), δui.data(),
                     grad_δui.data(), dofs_per_cell, dΩ, mp);
-        timer.leave_subsection();
-      };
+      }
     }
 
     // Loop over cell_rhs_raw and copy to cell_rhs
     for (unsigned int i = 0; i < dofs_per_cell; ++i)
       cell_rhs[i] = cell_rhs_raw[i];
-
+    // Loop over cell_matrix_raw and copy to cell_matrix
     int m = 0;
     for (unsigned int col = 0; col < dofs_per_cell; ++col)
       for (unsigned int row = 0; row < dofs_per_cell; ++row)
         cell_matrix[row][col] = cell_matrix_raw[m++];
 
+    // Assemble into global arrays
     cell->get_dof_indices(local_dof_indices);
     newton_constraints.distribute_local_to_global(
         cell_matrix, cell_rhs, local_dof_indices, tangent_matrix, system_rhs);
-    timer.leave_subsection();
   }
-  timer.leave_subsection();
 }
 
 template <int dim> void HyperelasticitySim<dim>::make_dirichlet_constraints() {
